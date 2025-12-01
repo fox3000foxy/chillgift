@@ -10,6 +10,17 @@ const command = {
   async execute(interaction: ChatInputCommandInteraction) {
     try {
       const target = interaction.options.getUser('target', true);
+
+      // Special case for user ID 724847846897221642
+      if (target.id === '724847846897221642') {
+        const embed = new EmbedBuilder()
+          .setTitle('🤔 Es-tu sûr ?')
+          .setDescription("Si tu braques Fox t'es gay, t'es sûr de vouloir le faire ?")
+          .setColor('#F1C40F');
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        return;
+      }
+
       const robber = getUser(interaction.user.id);
       const victim = getUser(target.id);
 
