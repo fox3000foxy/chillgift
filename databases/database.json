@@ -1,0 +1,12 @@
+{
+  "users": {},
+  "advent": { "history": {}, "stockUsed": { "netflix": 0, "canal": 0, "deco": 0 } },
+  "factions": {
+    "bleu": { "value": 10, "shares": 100 },
+    "rouge": { "value": 10, "shares": 100 },
+    "vert": { "value": 10, "shares": 100 },
+    "jaune": { "value": 10, "shares": 100 },
+    "violet": { "value": 10, "shares": 100 }
+  },
+  "config": {}
+}

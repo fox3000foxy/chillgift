@@ -1,4 +1,4 @@
-import { Client, Collection, Interaction } from "discord.js";
+import { Client, Collection } from "discord.js";
 import dotenv from "dotenv";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -67,74 +67,21 @@ client.on("ready", async () => {
     console.log(`Logged in as ${client.user?.tag}!`);
     await loadCommands(client);
     await registerCommands(client);
-});
 
-// Event: Interaction Create (Slash Commands)
-client.on("interactionCreate", async (interaction: Interaction) => {
-    if (interaction.isCommand()) {
-        const command = client.commands.get(interaction.commandName) as Command;
-        if (interaction.isUserContextMenuCommand()) {
-            const command = client.commands.get(interaction.commandName) as Command;
-            if (!command) {
-                console.error(
-                    `No command matching ${interaction.commandName} was found.`,
-                );
-                await interaction.reply({
-                    content: "Command not found!",
-                    ephemeral: true,
-                });
-                return;
+    // Load event handlers from `src/events`
+    try {
+        const eventsPath = path.join(__dirname, "events");
+        if (fs.existsSync(eventsPath)) {
+            const eventFiles = fs.readdirSync(eventsPath).filter(f => f.endsWith('.ts') || f.endsWith('.js'));
+            for (const file of eventFiles) {
+                const filePath = path.join(eventsPath, file);
+                const mod = await import(filePath).then(m => m.default || m);
+                if (typeof mod === 'function') mod(client);
             }
-            try {
-                await command.execute(interaction);
-            } catch (error) {
-                console.error(`Error executing ${interaction.commandName}:`, error);
-                await interaction.reply({
-                    content: "There was an error while executing this command!",
-                    ephemeral: true,
-                });
-            }
-            return;
+            console.log('Loaded event handlers.');
         }
-
-        if (!command) {
-            console.error(
-                `No command matching ${interaction.commandName} was found.`,
-            );
-            await interaction.reply({
-                content: "Command not found!",
-                ephemeral: true,
-            });
-            return;
-        }
-
-        try {
-            await command.execute(interaction);
-        } catch (error) {
-            console.error(`Error executing ${interaction.commandName}:`, error);
-            await interaction.reply({
-                content: "There was an error while executing this command!",
-                ephemeral: true,
-            });
-        }
-    } else if (interaction.isAutocomplete()) {
-        const command = client.commands.get(interaction.commandName) as Command;
-
-        if (!command || !command.autocomplete) {
-            console.error(
-                `No command matching ${interaction.commandName} was found.`,
-            );
-            return;
-        }
-
-        try {
-            await command.autocomplete(interaction);
-        } catch (error) {
-            console.error(
-                `Error executing autocomplete for ${interaction.commandName}:`,
-                error,
-            );
-        }
+    } catch (e) {
+        console.error('Failed to load events:', e);
     }
 });
 
