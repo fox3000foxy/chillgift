@@ -1,12 +1,114 @@
 {
-  "users": {},
-  "advent": { "history": {}, "stockUsed": { "netflix": 0, "canal": 0, "deco": 0 } },
-  "factions": {
-    "bleu": { "value": 10, "shares": 100 },
-    "rouge": { "value": 10, "shares": 100 },
-    "vert": { "value": 10, "shares": 100 },
-    "jaune": { "value": 10, "shares": 100 },
-    "violet": { "value": 10, "shares": 100 }
+  "users": {
+    "724847846897221642": {
+      "points": 15,
+      "inventory": {},
+      "daily": {
+        "date": "2025-12-01",
+        "donjon": 0,
+        "traps": 0,
+        "works": 0,
+        "claimed": false
+      },
+      "faction": {
+        "name": null,
+        "shares": {}
+      },
+      "maritime": {
+        "active": false
+      }
+    },
+    "1365989943012229221": {
+      "points": 0,
+      "inventory": {},
+      "daily": {
+        "date": "2025-12-01",
+        "donjon": 0,
+        "traps": 0,
+        "works": 0,
+        "claimed": false
+      },
+      "faction": {
+        "name": null,
+        "shares": {}
+      },
+      "maritime": {
+        "active": false
+      }
+    }
   },
-  "config": {}
+  "advent": {
+    "history": {},
+    "stockUsed": {
+      "netflix": 0,
+      "canal": 0,
+      "deco": 0
+    }
+  },
+  "factions": {
+    "bleu": {
+      "value": 10,
+      "shares": 100
+    },
+    "rouge": {
+      "value": 10,
+      "shares": 100
+    },
+    "vert": {
+      "value": 10,
+      "shares": 100
+    },
+    "jaune": {
+      "value": 10,
+      "shares": 100
+    },
+    "violet": {
+      "value": 10,
+      "shares": 100
+    }
+  },
+  "config": {
+    "logChannelId": "",
+    "adventChannelId": "",
+    "superAdminRoles": [],
+    "dailyReward": 50,
+    "inviteReward": 70,
+    "costTrap": 50,
+    "costDonjon": 10,
+    "costShield": 150,
+    "costAmulet": 300,
+    "costDagger": 200,
+    "maritimeCosts": {
+      "calm": 20,
+      "storm": 50,
+      "abyss": 100
+    },
+    "maritimeTimes": {
+      "calm": 1800000,
+      "storm": 7200000,
+      "abyss": 14400000
+    },
+    "limitTraps": 3,
+    "limitDonjon": 10,
+    "limitWork": 5,
+    "probs": {
+      "star": 15,
+      "phoenix": 15,
+      "tree": 40,
+      "snowball": 10,
+      "quiz": 20
+    },
+    "adventProbs": {
+      "prize": 3,
+      "mute": 40,
+      "xp": 30,
+      "nothing": 10,
+      "curse": 17
+    },
+    "prizesStock": {
+      "netflix": 1,
+      "canal": 2,
+      "deco": 1
+    }
+  }
 }

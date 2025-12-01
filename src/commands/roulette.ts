@@ -1,4 +1,4 @@
-import { CommandInteraction, SlashCommandBuilder } from 'discord.js';
+import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
 import { getUser, updatePoints } from '../legacy/db';
 
 const command = {
@@ -14,7 +14,7 @@ const command = {
     ))
     .addIntegerOption(o=>o.setName('mise').setRequired(true).setDescription('Montant')),
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     try {
       const opt = interaction.options.getString('option', true);
       const m = interaction.options.getInteger('mise', true);

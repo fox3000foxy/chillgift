@@ -11,26 +11,6 @@ export default function registerInteractionCreate(client: Client) {
                 const [act, sub, data] = btn.customId.split('_');
                 const user = getUser(btn.user.id);
 
-                // If the customId starts with a registered command name, try to delegate
-                // the interaction to that command's execute(). This allows command
-                // modules to handle button flows when appropriate.
-                try {
-                    const cmd = (client as any).commands?.get && (client as any).commands.get(act);
-                    if (cmd && typeof cmd.execute === 'function') {
-                        try {
-                            // Call execute with the ButtonInteraction. Commands should
-                            // handle the interaction type or do a type-check themselves.
-                            await cmd.execute(btn as any);
-                            return;
-                        } catch (err) {
-                            console.error(`Command ${act} execute failed when called from button:`, err);
-                            // fall through to specialized handlers below
-                        }
-                    }
-                } catch (e) {
-                    console.error('Error while delegating button to command execute:', e);
-                }
-
                 // Shop buy
                 if (act === 'shop' && sub === 'buy') {
                     const item = data;
