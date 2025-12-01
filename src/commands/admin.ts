@@ -15,22 +15,22 @@ const command = {
         const user = interaction.options.getUser('user', true);
         const pts = interaction.options.getInteger('points', true);
         updatePoints(user.id, pts);
-        return interaction.reply({ content: `Ajouté ${pts} pts à ${user}.` });
+        return interaction.reply({ content: `Ajouté ${pts} pts à ${user}.`, ephemeral: true });
       }
       if (sub === 'remove') {
         const user = interaction.options.getUser('user', true);
         const pts = interaction.options.getInteger('points', true);
         updatePoints(user.id, -pts);
-        return interaction.reply({ content: `Retiré ${pts} pts à ${user}.` });
+        return interaction.reply({ content: `Retiré ${pts} pts à ${user}.`, ephemeral: true });
       }
       if (sub === 'drop') {
         const montant = interaction.options.getInteger('montant', true);
         // Create a drop message; the button handler is not implemented in commands
         await (interaction.channel as TextChannel)?.send({ content: `💰 DROP ${montant}` });
-        return interaction.reply({ content: 'Drop posté.' });
+        return interaction.reply({ content: 'Drop posté.', ephemeral: true });
       }
       if (sub === 'post-advent') {
-        await interaction.reply({ content: 'Feature post-advent (à implémenter).'});
+        await interaction.reply({ content: 'Feature post-advent (à implémenter).', ephemeral: true });
       }
     } catch (e) {
       console.error('admin error', e);

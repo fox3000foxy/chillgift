@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
+import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { getUser, saveDatabase, updatePoints } from '../legacy/db';
 
 const command = {
@@ -14,7 +14,11 @@ const command = {
       const victim = getUser(target.id);
 
       if (!victim || victim.points <= 0) {
-        await interaction.reply({ content: `${target.username} n'a pas assez de points à voler.`, ephemeral: true });
+        const embed = new EmbedBuilder()
+          .setTitle('❌ Échec du braquage')
+          .setDescription(`${target.username} n'a pas assez de points à voler.`)
+          .setColor('#E74C3C');
+        await interaction.reply({ embeds: [embed], ephemeral: true });
         return;
       }
 
@@ -24,7 +28,15 @@ const command = {
         updatePoints(interaction.user.id, -penalty);
         updatePoints(target.id, penalty); // Victim gains the penalty points
         saveDatabase();
-        await interaction.reply({ content: `❌ Le braquage a échoué ! Vous avez perdu ${penalty} points en essayant de voler ${target.username}.`});
+
+        const embed = new EmbedBuilder()
+          .setTitle('❌ Braquage échoué')
+          .setDescription(`Vous avez tenté de voler ${target.username}, mais vous avez échoué !
+
+💸 Vous perdez **${penalty} points**.
+🎯 ${target.username} récupère **${penalty} points**.`)
+          .setColor('#E74C3C');
+        await interaction.reply({ embeds: [embed] });
         return;
       }
 
@@ -33,7 +45,13 @@ const command = {
       updatePoints(interaction.user.id, amount);
       saveDatabase();
 
-      await interaction.reply({ content: `💰 Vous avez réussi à voler ${amount} points à ${target.username} !` });
+      const embed = new EmbedBuilder()
+        .setTitle('💰 Braquage réussi !')
+        .setDescription(`Vous avez réussi à voler **${amount} points** à ${target.username} !
+
+🎉 Félicitations pour votre audace !`)
+        .setColor('#2ECC71');
+      await interaction.reply({ embeds: [embed] });
     } catch (e) {
       console.error('Erreur lors du braquage :', e);
       if (!interaction.replied) {

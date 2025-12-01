@@ -1,8 +1,10 @@
 {
   "users": {
     "724847846897221642": {
-      "points": 109,
-      "inventory": {},
+      "points": 10545,
+      "inventory": {
+        "shield": 1
+      },
       "daily": {
         "date": "2025-12-01",
         "donjon": 1,

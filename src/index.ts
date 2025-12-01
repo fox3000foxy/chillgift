@@ -302,9 +302,9 @@ client.on("interactionCreate", async interaction => {
         }
 
         // default fallback
-        await btn.reply({ content: 'Action non implémentée encore.', ephemeral: true });
+        // await btn.reply({ content: 'Action non implémentée encore.', ephemeral: true });
     }
-});
+}); 
 
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Message, TextChannel } from 'discord.js';
 import { addClaimedMessage, db, getClaimedMessages, getUser, saveDatabase, updatePoints } from './legacy/db';
