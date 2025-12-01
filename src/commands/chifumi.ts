@@ -1,17 +1,123 @@
-import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, ComponentType, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { getUser, saveDatabase, updatePoints } from '../legacy/db';
 
 const command = {
-    data: new SlashCommandBuilder().setName('chifumi').setDescription('PvP chifumi').addUserOption(o => o.setName('membre').setRequired(true).setDescription('Adv')),
-    async execute(interaction: ChatInputCommandInteraction) {
-        await interaction.reply({ content: 'Commande désactivée temporairement.', ephemeral: true }); return;
+    data: new SlashCommandBuilder()
+        .setName('chifumi')
+        .setDescription('PvP chifumi')
+        .addUserOption(o => o.setName('membre').setRequired(true).setDescription('Adv')),
 
+    async execute(interaction: ChatInputCommandInteraction) {
         try {
             const adv = interaction.options.getUser('membre', true);
-            // create a simple challenge message — full implementation requires state handling
-            await interaction.reply({ content: `${adv}, tu es défié par ${interaction.user}. (Accepter via message non-implémenté)`, ephemeral: false });
+            const challenger = getUser(interaction.user.id);
+            const opponent = getUser(adv.id);
+            const bet = 30;
+
+            if (challenger.points < bet || opponent.points < bet) {
+                const embed = new EmbedBuilder()
+                    .setTitle('❌ Impossible de lancer le défi')
+                    .setDescription(`Les deux joueurs doivent avoir au moins **${bet} points** pour jouer.`)
+                    .setColor('#E74C3C');
+                await interaction.reply({ embeds: [embed], ephemeral: true });
+                return;
+            }
+
+            const embed = new EmbedBuilder()
+                .setTitle('✊ Chifumi PvP')
+                .setDescription(`${adv}, ${interaction.user} vous défie à un duel de Chifumi !
+
+Mise : **${bet} points** chacun.
+
+Cliquez sur un bouton pour jouer.`)
+                .setColor('#3498DB');
+
+            const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+                new ButtonBuilder().setCustomId('chifumi_rock').setLabel('✊ Pierre').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('chifumi_paper').setLabel('🖐️ Papier').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('chifumi_scissors').setLabel('✌️ Ciseaux').setStyle(ButtonStyle.Primary)
+            );
+
+            const message = await interaction.reply({ embeds: [embed], components: [row], fetchReply: true });
+
+            const collector = message.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
+
+            type Choice = 'rock' | 'paper' | 'scissors';
+            const choices = new Map<string, Choice>();
+
+            collector.on('collect', async (btnInteraction) => {
+                if (![interaction.user.id, adv.id].includes(btnInteraction.user.id)) {
+                    await btnInteraction.reply({ content: 'Ce duel ne vous concerne pas.', ephemeral: true });
+                    return;
+                }
+
+                if (choices.has(btnInteraction.user.id)) {
+                    await btnInteraction.reply({ content: 'Vous avez déjà fait votre choix.', ephemeral: true });
+                    return;
+                }
+
+                const chosen = btnInteraction.customId.split('_')[1] as Choice;
+                choices.set(btnInteraction.user.id, chosen);
+                await btnInteraction.reply({ content: `Choix enregistré : **${chosen}**`, ephemeral: true });
+
+                if (choices.size === 2) {
+                    collector.stop();
+                }
+            });
+
+            collector.on('end', async () => {
+                if (choices.size < 2) {
+                    await interaction.editReply({ content: 'Le duel a expiré faute de réponses.', components: [] });
+                    return;
+                }
+                type Choice = 'rock' | 'paper' | 'scissors';
+                const challengerChoice = choices.get(interaction.user.id) as Choice;
+                const opponentChoice = choices.get(adv.id) as Choice;
+
+                const outcomes: Record<Choice, Record<Choice, 'win' | 'lose' | 'draw'>> = {
+                    rock: { rock: 'draw', paper: 'lose', scissors: 'win' },
+                    paper: { rock: 'win', paper: 'draw', scissors: 'lose' },
+                    scissors: { rock: 'lose', paper: 'win', scissors: 'draw' }
+                };
+
+                const result = outcomes[challengerChoice][opponentChoice];
+                let resultEmbed;
+
+                if (result === 'win') {
+                    updatePoints(interaction.user.id, bet);
+                    updatePoints(adv.id, -bet);
+                    resultEmbed = new EmbedBuilder()
+                        .setTitle('🎉 Victoire !')
+                        .setDescription(`${interaction.user} a gagné contre ${adv} !
+
+**${interaction.user.username}** gagne **${bet} points** !`)
+                        .setColor('#2ECC71');
+                } else if (result === 'lose') {
+                    updatePoints(interaction.user.id, -bet);
+                    updatePoints(adv.id, bet);
+                    resultEmbed = new EmbedBuilder()
+                        .setTitle('😢 Défaite !')
+                        .setDescription(`${adv} a gagné contre ${interaction.user} !
+
+**${adv.username}** gagne **${bet} points** !`)
+                        .setColor('#E74C3C');
+                } else {
+                    resultEmbed = new EmbedBuilder()
+                        .setTitle('🤝 Match nul !')
+                        .setDescription(`Le duel entre ${interaction.user} et ${adv} se termine par une égalité !
+
+Aucun point n'est échangé.`)
+                        .setColor('#F1C40F');
+                }
+
+                saveDatabase();
+                await interaction.editReply({ embeds: [resultEmbed], components: [] });
+            });
         } catch (e) {
             console.error('chifumi error', e);
-            if (!interaction.replied) await interaction.reply({ content: 'Erreur.', ephemeral: true });
+            if (!interaction.replied) {
+                await interaction.reply({ content: 'Erreur.', ephemeral: true });
+            }
         }
     }
 };
