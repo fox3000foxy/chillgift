@@ -194,17 +194,6 @@ client.on("interactionCreate", async interaction => {
         const [act, sub, data] = btn.customId.split('_');
         const user = getUser(btn.user.id);
 
-        // Shop buy
-        if (act === 'shop' && sub === 'buy') {
-            const item = data;
-            const costs: any = { shield: 150, amulet: 300, dagger: 200 };
-            if (user.points < costs[item]) return btn.update({ content: 'Pas de fonds.', components: [] });
-            updatePoints(btn.user.id, -costs[item]);
-            user.inventory[item] = (user.inventory[item] || 0) + 1;
-            saveDatabase();
-            return btn.update({ content: `✅ Acheté ${item}.`, components: [] });
-        }
-
         // Snowball event
         if (act === 'ev' && sub === 'snowball') {
             const claimedMessages = getClaimedMessages();
@@ -226,26 +215,11 @@ client.on("interactionCreate", async interaction => {
 
             // Defer the reply to handle async operations
             if (!btn.replied && !btn.deferred) {
-                await btn.deferReply({ ephemeral: true });
+                await btn.deferReply();
             }
 
             await btn.message.edit({ components: [] });
             updatePoints(btn.user.id, 5);
-
-            if (user.inventory.dagger > 0) {
-                const row = new ActionRowBuilder<ButtonBuilder>()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('use_dagger')
-                            .setLabel('UTILISER')
-                            .setStyle(ButtonStyle.Success),
-                        new ButtonBuilder()
-                            .setCustomId('no_dagger')
-                            .setLabel('NON')
-                            .setStyle(ButtonStyle.Secondary)
-                    );
-                return btn.followUp({ content: 'Dague ?', components: [row], ephemeral: true });
-            }
 
             const guild = btn.guild;
 
@@ -269,42 +243,36 @@ client.on("interactionCreate", async interaction => {
             }
 
             let txt = '❄️ **HIT**\n';
+            let embed = new EmbedBuilder()
+                .setTitle('❄️ Snowball Hit!')
+                .setColor('#3498DB');
+
             if (members && members.size > 0) {
                 let random = members.random() as GuildMember;
-                // Le membre random ne peut pas etre le cliqueur, on while jusqu'a en avoir un autre
-                while (random.id === btn.user.id && members.size > 1) {
+                // Le membre random ne peut pas etre le cliqueur, on while jusqu'a en avoir un autre, il y a au moins 2 membres dans le serveur car le cliqueur est la
+                while ((random.id === btn.user.id || random.user.bot) && members.size > 1) {
                     random = members.random() as GuildMember;
                 }
 
                 const victim = getUser(random.id);
                 if (victim.inventory.amulet > 0) {
                     victim.inventory.amulet--;
-                    txt += `🛡️ <@${random.id}>`;
+                    txt += `🛡️ <@${random.id}> protégé par une amulette.`;
                 } else if (victim.inventory.shield > 0) {
                     victim.inventory.shield--;
-                    txt += `🛡️ <@${random.id}>`;
+                    txt += `🛡️ <@${random.id}> protégé par un bouclier.`;
                 } else {
                     updatePoints(random.id, -3);
-                    txt += `🎯 <@${random.id}> -3`;
+                    txt += `🎯 <@${random.id}> perd **3 points**.`;
                 }
                 saveDatabase();
             }
-            return btn.followUp({ content: txt, ephemeral: false });
-        }
 
-        // trap open
-        if (act === 'trap' && sub === 'open') {
-            const owner = data;
-            if (btn.user.id === owner) return btn.reply({ content: "C'est le tien.", ephemeral: true });
-            await btn.message.edit({ components: [] });
-            if (Math.random() < 0.5) { updatePoints(btn.user.id, 100); return btn.reply({ content: '✨ +100' }); }
-            else { updatePoints(btn.user.id, -100); updatePoints(owner, 50); return btn.reply({ content: '💣 -100' }); }
+            embed.setDescription(txt);
+            return btn.followUp({ embeds: [embed] });
         }
-
-        // default fallback
-        // await btn.reply({ content: 'Action non implémentée encore.', ephemeral: true });
     }
-}); 
+});
 
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Message, TextChannel } from 'discord.js';
 import { addClaimedMessage, db, getClaimedMessages, getUser, saveDatabase, updatePoints } from './legacy/db';
@@ -332,52 +300,107 @@ client.on('messageCreate', async (message: Message) => {
 
     try {
         if (type === 'star') {
-            const m = await message.reply('🌠 **ÉTOILE !** Vite !');
+            const embed = new EmbedBuilder()
+                .setTitle('🌠 ÉTOILE !')
+                .setDescription('Vite, réagissez avec 🌠 pour gagner des points !')
+                .setColor('#FFD700');
+
+            const m = await message.reply({ embeds: [embed] });
             await m.react('🌠');
             const collector = m.createReactionCollector({ filter: (r, u) => r.emoji.name === '🌠' && !u.bot, time: 15000, max: 1 });
             collector.on('collect', async (r, u) => {
-                // simple handling: reward
                 const user = getUser(u.id);
+                const rewardEmbed = new EmbedBuilder().setColor('#2ECC71');
+
                 if (user.inventory?.dagger > 0) {
-                    // ask for dagger choice
-                    await (message.channel as TextChannel).send(`<@${u.id}> Dague ?`);
+                    rewardEmbed
+                        .setTitle('Dague trouvée !')
+                        .setDescription(`<@${u.id}> a trouvé une dague !`);
                 } else {
                     if (Math.random() > 0.4) {
                         updatePoints(u.id, 50);
-                        (message.channel as TextChannel).send(`🎉 <@${u.id}> +50`);
+                        rewardEmbed
+                            .setTitle('🎉 Récompense !')
+                            .setDescription(`<@${u.id}> gagne **50 points** !`);
                     } else {
-                        // bad reaction
-                        if (user.inventory?.amulet > 0) { user.inventory.amulet--; saveDatabase(); (message.channel as TextChannel).send(`<@${u.id}> 🛡️ Amulette`); }
-                        else if (user.inventory?.shield > 0) { user.inventory.shield--; saveDatabase(); (message.channel as TextChannel).send(`<@${u.id}> 🛡️ Bouclier`); }
-                        else { updatePoints(u.id, -50); (message.channel as TextChannel).send(`<@${u.id}> 🔥 Piège -50`); }
+                        if (user.inventory?.amulet > 0) {
+                            user.inventory.amulet--;
+                            saveDatabase();
+                            rewardEmbed
+                                .setTitle('🛡️ Amulette utilisée !')
+                                .setDescription(`<@${u.id}> a utilisé une amulette pour se protéger.`);
+                        } else if (user.inventory?.shield > 0) {
+                            user.inventory.shield--;
+                            saveDatabase();
+                            rewardEmbed
+                                .setTitle('🛡️ Bouclier utilisé !')
+                                .setDescription(`<@${u.id}> a utilisé un bouclier pour se protéger.`);
+                        } else {
+                            updatePoints(u.id, -50);
+                            rewardEmbed
+                                .setTitle('🔥 Piège !')
+                                .setDescription(`<@${u.id}> perd **50 points** !`);
+                        }
                     }
                 }
+
+                await (message.channel as TextChannel).send({ embeds: [rewardEmbed] });
             });
         } else if (type === 'phoenix') {
             await message.react('🔥');
             const collector = message.createReactionCollector({ filter: (r, u) => r.emoji.name === '🔥' && !u.bot, time: 15000, max: 1 });
             collector.on('collect', (r, u) => {
                 updatePoints(u.id, -10);
-                (message.channel as TextChannel).send(`🔥 <@${u.id}> -10`);
+                const rewardEmbed = new EmbedBuilder()
+                    .setTitle('🔥 Récompense Phoenix')
+                    .setDescription(`<@${u.id}> perd **10 points**.`)
+                    .setColor('#E74C3C');
+                (message.channel as TextChannel).send({ embeds: [rewardEmbed] });
             });
         } else if (type === 'tree') {
-            await message.react('🎄');
-            const collector = message.createReactionCollector({ filter: (r, u) => r.emoji.name === '🎄' && !u.bot, time: 15000, max: 1 });
+            const embed = new EmbedBuilder()
+                .setTitle('🎄 ARBRE !')
+                .setDescription('Réagissez avec 🎄 pour gagner des points !')
+                .setColor('#2ECC71');
+
+            const m = await message.reply({ embeds: [embed] });
+            await m.react('🎄');
+            const collector = m.createReactionCollector({ filter: (r, u) => r.emoji.name === '🎄' && !u.bot, time: 15000, max: 1 });
             collector.on('collect', (r, u) => {
                 updatePoints(u.id, 5);
-                (message.channel as TextChannel).send(`🎄 <@${u.id}> +5`);
+                const rewardEmbed = new EmbedBuilder()
+                    .setTitle('🎄 Récompense Arbre')
+                    .setDescription(`<@${u.id}> gagne **5 points** !`)
+                    .setColor('#2ECC71');
+                (message.channel as TextChannel).send({ embeds: [rewardEmbed] });
             });
         } else if (type === 'snowball') {
+            const embed = new EmbedBuilder()
+                .setTitle('❄️ BATAILLE DE BOULES DE NEIGE !')
+                .setDescription('Appuyez sur le bouton pour participer !')
+                .setColor('#3498DB');
+
             const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder().setCustomId('ev_snowball').setLabel('JETER').setStyle(ButtonStyle.Primary)
             );
-            await (message.channel as TextChannel).send({ embeds: [new EmbedBuilder().setTitle('❄️ BATAILLE').setColor('#3498DB')], components: [row] });
+            await (message.channel as TextChannel).send({ embeds: [embed], components: [row] });
         } else if (type === 'quiz') {
             const a = Math.floor(Math.random() * 50), b = Math.floor(Math.random() * 50);
-            await (message.channel as TextChannel).send(`🧠 **QUIZ:** ${a} + ${b} ?`);
-            // message.channel is safe here because message.guild is present
+            const embed = new EmbedBuilder()
+                .setTitle('🧠 QUIZ !')
+                .setDescription(`Quelle est la réponse à : **${a} + ${b}** ?`)
+                .setColor('#9B59B6');
+
+            await (message.channel as TextChannel).send({ embeds: [embed] });
             const collector = (message.channel as TextChannel).createMessageCollector({ filter: m => !m.author.bot && m.content.trim() === (a + b).toString(), time: 10000, max: 1 });
-            collector.on('collect', m => { updatePoints(m.author.id, 15); (message.channel as TextChannel).send(`✅ <@${m.author.id}> +15 pts`); });
+            collector.on('collect', m => {
+                updatePoints(m.author.id, 15);
+                const rewardEmbed = new EmbedBuilder()
+                    .setTitle('✅ Réponse Correcte !')
+                    .setDescription(`<@${m.author.id}> gagne **15 points** !`)
+                    .setColor('#2ECC71');
+                (message.channel as TextChannel).send({ embeds: [rewardEmbed] });
+            });
         }
     } catch (e) {
         console.error('messageCreate event error:', e);

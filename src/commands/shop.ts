@@ -1,4 +1,5 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, ComponentType, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { getUser, saveDatabase, updatePoints } from '../legacy/db';
 
 const command = {
   data: new SlashCommandBuilder()
@@ -33,7 +34,36 @@ const command = {
           .setStyle(ButtonStyle.Primary)
       );
 
-      await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+      const message = await interaction.reply({ embeds: [embed], components: [row], ephemeral: true, fetchReply: true });
+
+      const collector = message.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
+
+      collector.on('collect', async (btnInteraction) => {
+        if (btnInteraction.user.id !== interaction.user.id) {
+          return btnInteraction.reply({ content: 'Vous ne pouvez pas utiliser ce bouton.', ephemeral: true });
+        }
+
+        const user = getUser(interaction.user.id);
+        const costs: Record<string, number> = { shield: 150, amulet: 300, dagger: 200 };
+        const item = btnInteraction.customId.split('_')[2];
+
+        if (user.points < costs[item]) {
+          return btnInteraction.reply({ content: 'Pas assez de points.', ephemeral: true });
+        }
+
+        updatePoints(interaction.user.id, -costs[item]);
+        user.inventory[item] = (user.inventory[item] || 0) + 1;
+        saveDatabase();
+
+        await btnInteraction.update({ content: `✅ Vous avez acheté ${item}.`, components: [] });
+        collector.stop();
+      });
+
+      collector.on('end', async () => {
+        if (message.editable) {
+          await message.edit({ components: [] });
+        }
+      });
     } catch (e) {
       console.error('Erreur dans la commande shop :', e);
       if (!interaction.replied) {
