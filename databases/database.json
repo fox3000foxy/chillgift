@@ -1,7 +1,7 @@
 {
   "users": {
     "724847846897221642": {
-      "points": 7536,
+      "points": 171,
       "inventory": {
         "shield": 1
       },
@@ -17,14 +17,16 @@
         "shares": {}
       },
       "maritime": {
-        "active": false
+        "active": false,
+        "endTime": 0,
+        "type": null
       }
     },
     "1365989943012229221": {
       "points": 727,
       "inventory": {},
       "daily": {
-        "date": "2025-12-01",
+        "date": "2025-12-02",
         "donjon": 0,
         "traps": 0,
         "works": 0,
@@ -42,7 +44,7 @@
       "points": 0,
       "inventory": {},
       "daily": {
-        "date": "2025-12-01",
+        "date": "2025-12-02",
         "donjon": 0,
         "traps": 0,
         "works": 0,

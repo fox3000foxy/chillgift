@@ -117,6 +117,7 @@ client.on("ready", async () => {
             }
             console.log('Loaded event handlers.');
         }
+        startExpeditionDaemon(client);
     } catch (e) {
         console.error('Failed to load events:', e);
     }
@@ -275,6 +276,7 @@ client.on("interactionCreate", async interaction => {
 });
 
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Message, TextChannel } from 'discord.js';
+import { startExpeditionDaemon } from "./commands/expedition";
 import { addClaimedMessage, db, getClaimedMessages, getUser, saveDatabase, updatePoints } from './legacy/db';
 
 client.on('messageCreate', async (message: Message) => {
