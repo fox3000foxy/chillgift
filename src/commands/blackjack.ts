@@ -6,6 +6,7 @@ function drawCard() { return ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J',
 const command = {
     data: new SlashCommandBuilder().setName('blackjack').setDescription('BJ').addIntegerOption(o => o.setName('mise').setRequired(true).setDescription('Mise')),
     async execute(interaction: ChatInputCommandInteraction) {
+        await interaction.reply({ content: 'Commande désactivée temporairement.', ephemeral: true }); return;
         try {
             const m = interaction.options.getInteger('mise', true);
             const uid = interaction.user.id;

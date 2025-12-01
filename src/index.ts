@@ -1,8 +1,7 @@
-import { Client, Collection, GatewayIntentBits } from "discord.js";
+import { ButtonInteraction, Client, Collection, GatewayIntentBits, GuildMember } from "discord.js";
 import dotenv from "dotenv";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import registerInteractionCreate from "./events/interactionCreate";
 import { Command, Config } from "./types";
 
 declare module "discord.js" {
@@ -21,24 +20,24 @@ const config: Config = {
 // Initialize Discord Client
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildModeration,
-    GatewayIntentBits.GuildEmojisAndStickers,
-    GatewayIntentBits.GuildIntegrations,
-    GatewayIntentBits.GuildWebhooks,
-    GatewayIntentBits.GuildInvites,
-    GatewayIntentBits.GuildVoiceStates,
-    GatewayIntentBits.GuildPresences,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.GuildMessageTyping,
-    GatewayIntentBits.DirectMessages,
-    GatewayIntentBits.DirectMessageReactions,
-    GatewayIntentBits.DirectMessageTyping,
-    GatewayIntentBits.MessageContent
-  ]
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildModeration,
+        GatewayIntentBits.GuildEmojisAndStickers,
+        GatewayIntentBits.GuildIntegrations,
+        GatewayIntentBits.GuildWebhooks,
+        GatewayIntentBits.GuildInvites,
+        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.GuildPresences,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.GuildMessageTyping,
+        GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.DirectMessageReactions,
+        GatewayIntentBits.DirectMessageTyping,
+        GatewayIntentBits.MessageContent
+    ]
 });
 
 // Store commands in a collection
@@ -105,7 +104,6 @@ client.on("ready", async () => {
     console.log(`Logged in as ${client.user?.tag}!`);
     await loadCommands(client);
     // await registerCommands(client);
-    registerInteractionCreate(client);
 
     // Load event handlers from `src/events`
     try {
@@ -189,11 +187,127 @@ client.on("interactionCreate", async interaction => {
                 error,
             );
         }
+    } else if (interaction.isButton()) {
+        const btn = interaction as ButtonInteraction;
+        // Ensure this interaction originates from a guild (buttons in DMs are unsupported for our flows)
+        if (!btn.guild) return btn.reply({ content: 'Action disponible uniquement en serveur.', ephemeral: true });
+        const [act, sub, data] = btn.customId.split('_');
+        const user = getUser(btn.user.id);
+
+        // Shop buy
+        if (act === 'shop' && sub === 'buy') {
+            const item = data;
+            const costs: any = { shield: 150, amulet: 300, dagger: 200 };
+            if (user.points < costs[item]) return btn.update({ content: 'Pas de fonds.', components: [] });
+            updatePoints(btn.user.id, -costs[item]);
+            user.inventory[item] = (user.inventory[item] || 0) + 1;
+            saveDatabase();
+            return btn.update({ content: `✅ Acheté ${item}.`, components: [] });
+        }
+
+        // Snowball event
+        if (act === 'ev' && sub === 'snowball') {
+            const claimedMessages = getClaimedMessages();
+
+            // Log for debugging
+            console.log(`Checking if message ${btn.message.id} is already claimed.`);
+
+            if (claimedMessages.includes(btn.message.id)) {
+                console.log(`Message ${btn.message.id} already claimed.`);
+                if (!btn.replied && !btn.deferred) {
+                    return btn.reply({ content: 'Trop tard.', ephemeral: true });
+                }
+                return;
+            }
+
+            // Mark the message as claimed
+            addClaimedMessage(btn.message.id);
+            console.log(`Message ${btn.message.id} marked as claimed.`);
+
+            // Defer the reply to handle async operations
+            if (!btn.replied && !btn.deferred) {
+                await btn.deferReply({ ephemeral: true });
+            }
+
+            await btn.message.edit({ components: [] });
+            updatePoints(btn.user.id, 5);
+
+            if (user.inventory.dagger > 0) {
+                const row = new ActionRowBuilder<ButtonBuilder>()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('use_dagger')
+                            .setLabel('UTILISER')
+                            .setStyle(ButtonStyle.Success),
+                        new ButtonBuilder()
+                            .setCustomId('no_dagger')
+                            .setLabel('NON')
+                            .setStyle(ButtonStyle.Secondary)
+                    );
+                return btn.followUp({ content: 'Dague ?', components: [row], ephemeral: true });
+            }
+
+            const guild = btn.guild;
+
+            // Vérifier si les membres sont déjà dans le cache
+            let members;
+            try {
+                members = guild.members.cache.size > 0
+                    ? guild.members.cache
+                    : await guild.members.fetch();
+            } catch (err) {
+                const errorAny = err as any;
+                if (errorAny && typeof errorAny === 'object' && errorAny.name === 'GatewayRateLimitError') {
+                    const retryAfter = errorAny.data?.retry_after ?? 1;
+                    console.warn(`Rate limit hit: retrying after ${retryAfter} seconds.`);
+                    await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+                    members = await guild.members.fetch();
+                } else {
+                    console.error('Failed to fetch guild members:', err);
+                    return btn.reply({ content: 'Erreur lors de la récupération des membres.', ephemeral: true });
+                }
+            }
+
+            let txt = '❄️ **HIT**\n';
+            if (members && members.size > 0) {
+                let random = members.random() as GuildMember;
+                // Le membre random ne peut pas etre le cliqueur, on while jusqu'a en avoir un autre
+                while (random.id === btn.user.id && members.size > 1) {
+                    random = members.random() as GuildMember;
+                }
+
+                const victim = getUser(random.id);
+                if (victim.inventory.amulet > 0) {
+                    victim.inventory.amulet--;
+                    txt += `🛡️ <@${random.id}>`;
+                } else if (victim.inventory.shield > 0) {
+                    victim.inventory.shield--;
+                    txt += `🛡️ <@${random.id}>`;
+                } else {
+                    updatePoints(random.id, -3);
+                    txt += `🎯 <@${random.id}> -3`;
+                }
+                saveDatabase();
+            }
+            return btn.followUp({ content: txt, ephemeral: false });
+        }
+
+        // trap open
+        if (act === 'trap' && sub === 'open') {
+            const owner = data;
+            if (btn.user.id === owner) return btn.reply({ content: "C'est le tien.", ephemeral: true });
+            await btn.message.edit({ components: [] });
+            if (Math.random() < 0.5) { updatePoints(btn.user.id, 100); return btn.reply({ content: '✨ +100' }); }
+            else { updatePoints(btn.user.id, -100); updatePoints(owner, 50); return btn.reply({ content: '💣 -100' }); }
+        }
+
+        // default fallback
+        await btn.reply({ content: 'Action non implémentée encore.', ephemeral: true });
     }
 });
 
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Message, TextChannel } from 'discord.js';
-import { db, getUser, saveDatabase, updatePoints } from './legacy/db';
+import { addClaimedMessage, db, getClaimedMessages, getUser, saveDatabase, updatePoints } from './legacy/db';
 
 client.on('messageCreate', async (message: Message) => {
     console.log('messageCreate event triggered');

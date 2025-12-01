@@ -4,6 +4,7 @@ import { getUser } from '../legacy/db';
 const command = {
   data: new SlashCommandBuilder().setName('points').setDescription('Profil'),
   async execute(interaction: CommandInteraction) {
+    
     try {
       const u = getUser(interaction.user.id);
       await interaction.reply({ content: `💰 ${u.points}`, ephemeral: true });
