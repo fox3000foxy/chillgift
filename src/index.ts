@@ -358,18 +358,13 @@ client.on('messageCreate', async (message: Message) => {
                 (message.channel as TextChannel).send({ embeds: [rewardEmbed] });
             });
         } else if (type === 'tree') {
-            const embed = new EmbedBuilder()
-                .setTitle('🎄 ARBRE !')
-                .setDescription('Réagissez avec 🎄 pour gagner des points !')
-                .setColor('#2ECC71');
-
-            const m = await message.reply({ embeds: [embed] });
-            await m.react('🎄');
-            const collector = m.createReactionCollector({ filter: (r, u) => r.emoji.name === '🎄' && !u.bot, time: 15000, max: 1 });
+            // React directly on the original message like the 'phoenix' case (no embed)
+            await message.react('🎄');
+            const collector = message.createReactionCollector({ filter: (r, u) => r.emoji.name === '🎄' && !u.bot, time: 15000, max: 1 });
             collector.on('collect', (r, u) => {
                 updatePoints(u.id, 5);
                 const rewardEmbed = new EmbedBuilder()
-                    .setTitle('🎄 Récompense Arbre')
+                    .setTitle('🎉 Points Gagnés !')
                     .setDescription(`<@${u.id}> gagne **5 points** !`)
                     .setColor('#2ECC71');
                 (message.channel as TextChannel).send({ embeds: [rewardEmbed] });
