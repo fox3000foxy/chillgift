@@ -1,7 +1,7 @@
 {
   "users": {
     "724847846897221642": {
-      "points": 236,
+      "points": 656,
       "inventory": {
         "shield": 1
       },
@@ -15,14 +15,12 @@
       "faction": {
         "name": "rouge",
         "shares": {
-          "rouge": 5,
+          "rouge": 100,
           "jaune": 10
         }
       },
       "maritime": {
-        "active": false,
-        "endTime": 0,
-        "type": null
+        "active": false
       }
     },
     "1365989943012229221": {
@@ -72,12 +70,12 @@
   },
   "factions": {
     "bleu": {
-      "value": 19,
+      "value": 5,
       "shares": 100
     },
     "rouge": {
       "president": "724847846897221642",
-      "value": 17,
+      "value": 6,
       "shares": 110
     },
     "vert": {
@@ -89,7 +87,7 @@
       "shares": 100
     },
     "violet": {
-      "value": 5,
+      "value": 12,
       "shares": 100
     }
   },

@@ -67,7 +67,7 @@ export default {
         }
 
         // Ensure the seller is valid or default to the faction president
-        const seller = interaction.options.getUser("joueur") || faction.president;
+        const seller = interaction.options.getUser("joueur");
 
         let availiableShares = faction.shares;
         // iteration over users to find how many shares they have so we deduce availiables shares from the server
@@ -129,7 +129,7 @@ export default {
         }
 
         // Check if the specified seller has enough shares
-        const sellerId = (seller as User)?.id || seller as string;
+        const sellerId = (seller as User)?.id;
         const sellerUser = await getDiscordUser(interaction.client, sellerId)
         const sellerData = database.users[sellerId];
         if (!sellerData || !sellerData.faction || !sellerData.faction.shares || !sellerData.faction.shares[factionName] || sellerData.faction.shares[factionName] < nombre) {

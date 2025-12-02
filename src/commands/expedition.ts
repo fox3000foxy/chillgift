@@ -1,5 +1,6 @@
-import { ChatInputCommandInteraction, Client, SlashCommandBuilder } from 'discord.js';
-import { db, getUser, saveDatabase, updatePoints } from '../legacy/db';
+import { ChatInputCommandInteraction, Client, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import fs from 'fs';
+import { getUser, updatePoints } from '../legacy/db';
 
 function generateRewards(type: 'calm' | 'storm' | 'abyss'): { name: string; value: number }[] {
     const materials = [
@@ -44,7 +45,7 @@ function generateRewards(type: 'calm' | 'storm' | 'abyss'): { name: string; valu
 
 async function checkExpeditions(client: Client) {
     const now = Date.now();
-
+    const db = loadDatabase();
     for (const userId in db.users) {
         const user = getUser(userId);
         // console.log(`Vérification des expéditions pour l'utilisateur ${userId}...`);
@@ -71,7 +72,9 @@ async function checkExpeditions(client: Client) {
                     text: `Total des points gagnés : ${totalValue}`
                 }
             };
-
+            user.maritime = { active: false }; // Supprimer l'expédition en cours
+            db.users[userId] = user;
+            saveDatabase(db);
             // Envoyer un message privé à l'utilisateur
             const discordUser = await client.users.fetch(userId);
             if (discordUser) {
@@ -79,12 +82,19 @@ async function checkExpeditions(client: Client) {
             }
 
             // Marquer l'expédition comme terminée
-            user.maritime = null; // Supprimer l'expédition en cours
         }
     }
 
     // Sauvegarder les modifications
-    saveDatabase();
+}
+
+function loadDatabase() {
+    const data = fs.readFileSync("./databases/database.json", "utf-8");
+    return JSON.parse(data);
+}
+
+function saveDatabase(db: any) {
+    fs.writeFileSync("./databases/database.json", JSON.stringify(db, null, 2));
 }
 
 function getMaterialEmoji(material: string): string {
@@ -149,9 +159,24 @@ const command = {
                 rewards: []
             };
 
-            saveDatabase();
+            const db = loadDatabase();
+            db.users[uid] = user;
 
-            await interaction.reply({ content: `🚢 Expédition vers ${mode} lancée ! Coût : ${cost} points. Durée : ${time / (60 * 1000)} minutes.` });
+            console.log(`Utilisateur ${uid} a lancé une expédition vers ${mode}.`, user.maritime);
+
+            saveDatabase(db);
+
+            const embed = new EmbedBuilder()
+                .setColor("Blue")
+                .setTitle("🚢 Expédition Lancée !")
+                .setDescription(
+                    `Votre expédition vers **${mode}** a été lancée avec succès !\n\n` +
+                    `**Coût** : ${cost} points\n` +
+                    `**Durée** : ${time / (60 * 1000)} minutes.`
+                )
+                .setFooter({ text: "Bonne chance dans votre aventure !" });
+
+            await interaction.reply({ embeds: [embed], ephemeral: true });
         } catch (e) {
             console.error('Erreur lors de l\'expédition :', e);
             if (!interaction.replied) {
