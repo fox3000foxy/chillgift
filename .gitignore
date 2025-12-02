@@ -137,3 +137,5 @@ out
 dist
 package-lock.json
 restrictions.json
+
+database.json
