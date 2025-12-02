@@ -116,7 +116,7 @@ client.once("clientReady", async () => {
             console.log('Loaded event handlers.');
         }
         startExpeditionDaemon(client);
-        startRandomEventDaemon(client); 
+        startRandomEventDaemon(client);
     } catch (e) {
         console.error('Failed to load events:', e);
     }
@@ -318,12 +318,16 @@ client.on('messageCreate', async (message: Message) => {
                     rewardEmbed
                         .setTitle('Dague trouvée !')
                         .setDescription(`<@${u.id}> a trouvé une dague !`);
+                    user.inventory.dagger--;
+                    saveDatabase();
+                    log('Star Event', `${u.tag} used a dagger to avoid star damage.`);
                 } else {
                     if (Math.random() > 0.4) {
                         updatePoints(u.id, 50);
                         rewardEmbed
                             .setTitle('🎉 Récompense !')
-                            .setDescription(`<@${u.id}> gagne **50 points** !`);
+                            .setDescription(`<@${u.id}> gagne **250 points** !`);
+                        log('Star Event', `${u.tag} reacted to star and earned 250 points.`);
                     } else {
                         if (user.inventory?.amulet > 0) {
                             user.inventory.amulet--;
@@ -331,17 +335,29 @@ client.on('messageCreate', async (message: Message) => {
                             rewardEmbed
                                 .setTitle('🛡️ Amulette utilisée !')
                                 .setDescription(`<@${u.id}> a utilisé une amulette pour se protéger.`);
+                            log('Star Event', `${u.tag} used an amulet to protect themselves from star damage.`);
                         } else if (user.inventory?.shield > 0) {
                             user.inventory.shield--;
                             saveDatabase();
                             rewardEmbed
                                 .setTitle('🛡️ Bouclier utilisé !')
                                 .setDescription(`<@${u.id}> a utilisé un bouclier pour se protéger.`);
+                            log('Star Event', `${u.tag} used a shield to protect themselves from star damage.`);
                         } else {
-                            updatePoints(u.id, -50);
+                            // updatePoints(u.id, -50);
+                            // rewardEmbed
+                            //     .setTitle('🔥 Piège !')
+                            //     .setDescription(`<@${u.id}> perd **50 points** !`);
+
+                            // Timeout le user pendant 2 minutes (120000 ms)
+                            const guild = message.guild;
+                            if (!guild) return;
+                            const member = await guild.members.fetch(u.id).catch(() => null);
+                            member?.timeout(120000, 'Touché par une étoile sans protection');
                             rewardEmbed
-                                .setTitle('🔥 Piège !')
-                                .setDescription(`<@${u.id}> perd **50 points** !`);
+                                .setTitle('⏱️ Timeout !')
+                                .setDescription(`<@${u.id}> a été mis en timeout pendant 2 minutes pour avoir touché une étoile sans protection.`);
+                            log('Star Event', `${u.tag} was timed out for touching a star without protection.`);
                         }
                     }
                 }
@@ -358,6 +374,7 @@ client.on('messageCreate', async (message: Message) => {
                     .setDescription(`<@${u.id}> perd **10 points**.`)
                     .setColor('#E74C3C');
                 (message.channel as TextChannel).send({ embeds: [rewardEmbed] });
+                log('Phoenix Event', `${u.tag} reacted to phoenix and lost 10 points.`);
             });
         } else if (type === 'tree') {
             // React directly on the original message like the 'phoenix' case (no embed)
@@ -370,6 +387,7 @@ client.on('messageCreate', async (message: Message) => {
                     .setDescription(`<@${u.id}> gagne **5 points** !`)
                     .setColor('#2ECC71');
                 (message.channel as TextChannel).send({ embeds: [rewardEmbed] });
+                log('Tree Event', `${u.tag} reacted to tree and earned 5 points.`);
             });
         } else if (type === 'snowball') {
             const embed = new EmbedBuilder()
@@ -389,7 +407,7 @@ client.on('messageCreate', async (message: Message) => {
                 .setColor('#9B59B6');
 
             await (message.channel as TextChannel).send({ embeds: [embed] });
-            const collector = (message.channel as TextChannel).createMessageCollector({ filter: m => !m.author.bot && m.content.trim() === (a + b).toString(), time: 10000, max: 1 });
+            const collector = (message.channel as TextChannel).createMessageCollector({ filter: m => !m.author.bot && m.content.trim() === (a + b).toString(), time: 10000, max: 15 });
             collector.on('collect', m => {
                 updatePoints(m.author.id, 15);
                 const rewardEmbed = new EmbedBuilder()
@@ -397,6 +415,7 @@ client.on('messageCreate', async (message: Message) => {
                     .setDescription(`<@${m.author.id}> gagne **15 points** !`)
                     .setColor('#2ECC71');
                 (message.channel as TextChannel).send({ embeds: [rewardEmbed] });
+                log('Quiz Event', `${m.author.tag} answered the quiz question correctly and earned 15 points.`);
             });
         }
     } catch (e) {
@@ -404,14 +423,14 @@ client.on('messageCreate', async (message: Message) => {
     }
 });
 
-export async function log(title: string, details: string,  extraFields = []) {
+export async function log(title: string, details: string, extraFields = []) {
     console.log(`[${title}] ${details}`);
     const chan = await client.channels.fetch(db.config.logChannelId).catch(() => null);
     if (!chan) return;
-    
+
     const embed = new EmbedBuilder().setTitle(title).setDescription(details.substring(0, 4000)).setColor("#3498DB").setTimestamp();
     if (extraFields.length > 0) embed.addFields(extraFields);
-    try { await (chan as TextChannel).send({ embeds: [embed] }); } catch (e) {}
+    try { await (chan as TextChannel).send({ embeds: [embed] }); } catch (e) { }
 }
 
 // Log in to Discord with your client's token

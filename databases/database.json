@@ -70,16 +70,16 @@
   },
   "factions": {
     "bleu": {
-      "value": 5,
+      "value": 8,
       "shares": 100
     },
     "rouge": {
       "president": "724847846897221642",
-      "value": 8,
+      "value": 10,
       "shares": 110
     },
     "vert": {
-      "value": 5,
+      "value": 8,
       "shares": 100
     },
     "jaune": {
@@ -87,7 +87,7 @@
       "shares": 100
     },
     "violet": {
-      "value": 13,
+      "value": 18,
       "shares": 100
     }
   },
