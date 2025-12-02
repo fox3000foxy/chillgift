@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import {
-    AutocompleteInteraction,
-    CommandInteraction,
+  AutocompleteInteraction,
+  CommandInteraction,
 } from "discord.js";
 
 export interface Command {
@@ -14,4 +14,13 @@ export interface Command {
 
 export interface Config {
   DISCORD_TOKEN: string;
+}
+
+// Define the faction data structure
+export interface Faction {
+    name: string; // Name of the faction
+    president: string; // Discord ID of the faction president
+    members: string[]; // List of Discord IDs of faction members
+    shares: number; // Number of shares created by the faction
+    value: number; // Current value of one share
 }

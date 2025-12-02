@@ -9,7 +9,7 @@
     "lint:fix": "npx eslint src --ext .ts --fix",
     "format": "npx prettier --write src",
     "format:check": "npx prettier --check src",
-    "dev": "npx ts-node-dev src/index.ts",
+    "dev": "npx ts-node-dev --respawn --transpile-only --ignore \"databases/.*\\.json$\" src/index.ts",
     "build": "npx tsc",
     "test": "npx jest"
   },

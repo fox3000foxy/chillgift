@@ -44,10 +44,8 @@ const client = new Client({
 client.commands = new Collection<string, Command>();
 
 // Load commands from files
-async function loadCommands(client: Client): Promise<void> {
+async function loadCommands(client: Client): Promise<Command[]> {
     const commandsPath = path.join(__dirname, "commands");
-    if (!fs.existsSync(commandsPath)) return;
-
     const commandFiles = fs
         .readdirSync(commandsPath)
         .filter(f => f.endsWith(".ts") || f.endsWith(".js"));
@@ -71,39 +69,43 @@ async function loadCommands(client: Client): Promise<void> {
         if (mod && typeof mod === "object" && "data" in mod && "execute" in mod) {
             const command = mod as Command;
             client.commands.set(command.data.name, command);
-            console.log(`Loaded command: ${command.data.name}`);
+            // console.log(`Loaded command: ${command.data.name}`);
         } else {
             console.warn(
                 `[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`,
             );
         }
     }
+
+    console.log(`Loaded ${client.commands.size} commands.`);
+
+    return results
+        .filter((item): item is { mod: Command; filePath: string } => item !== null)
+        .map(item => item.mod as Command);
 }
 
 // Register commands to Discord API
-async function registerCommands(client: Client): Promise<void> {
+async function registerCommands(commands: Command[]): Promise<void> {
     try {
-        const commands = client.application?.commands;
-        if (!commands) return;
+        console.log("Registering application commands...");
+        // Ensure client.application is populated (ready) before attempting to register
+        await client.application?.fetch();
+        console.log("Client application fetched.");
 
-        for (const command of client.commands.values() as IterableIterator<Command>) {
-            await commands.create({
-                ...command.data.toJSON(),
-                integration_types: [0, 1],
-                contexts: [0, 1, 2],
-            });
-        }
-        console.log("Successfully registered application commands.");
+        // Convert commands to JSON and register them all at once
+        const commandData = commands.map(command => command.data.toJSON());
+        await client.application?.commands.set(commandData);
+
+        console.log(`Successfully registered ${commands.length} application commands.`);
     } catch (error) {
-        console.error("Failed to register application commands:", error);
+        console.error("Error registering application commands:", error);
     }
 }
-
 // Event: Client is ready
-client.on("ready", async () => {
+client.once("clientReady", async () => {
     console.log(`Logged in as ${client.user?.tag}!`);
-    await loadCommands(client);
-    // await registerCommands(client);
+    const commands = await loadCommands(client);
+    await registerCommands(commands);
 
     // Load event handlers from `src/events`
     try {
@@ -118,6 +120,7 @@ client.on("ready", async () => {
             console.log('Loaded event handlers.');
         }
         startExpeditionDaemon(client);
+        startRandomEventDaemon(client); 
     } catch (e) {
         console.error('Failed to load events:', e);
     }
@@ -278,9 +281,10 @@ client.on("interactionCreate", async interaction => {
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Message, TextChannel } from 'discord.js';
 import { startExpeditionDaemon } from "./commands/expedition";
 import { addClaimedMessage, db, getClaimedMessages, getUser, saveDatabase, updatePoints } from './legacy/db';
+import { startRandomEventDaemon } from "./lib/randomEvents";
 
 client.on('messageCreate', async (message: Message) => {
-    console.log('messageCreate event triggered');
+    // console.log('messageCreate event triggered');
     if (message.author.bot) return;
     // Ensure this message is from a guild (not a DM)
     if (!message.guild) return;

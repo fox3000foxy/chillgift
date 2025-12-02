@@ -5,6 +5,7 @@ const dbPath = path.join(process.cwd(), 'databases', 'database.json');
 
 export const DEFAULT_CONFIG = {
     logChannelId: process.env.LOG_CHANNEL_ID || '',
+    eventsChannelId: process.env.EVENTS_CHANNEL_ID || '',
     adventChannelId: process.env.ADVENT_CHANNEL_ID || '',
     superAdminRoles: [],
     dailyReward: 50,
@@ -61,6 +62,7 @@ export function getParisDate() {
 }
 
 export function getUser(id: string) {
+    loadDatabase();
     if (!db.users[id]) db.users[id] = { points: 0, inventory: {}, daily: {}, faction: { name: null, shares: {} }, maritime: { active: false } };
     if (!db.users[id].inventory) db.users[id].inventory = { shield: 0, amulet: 0, dagger: 0 };
     if (!db.users[id].faction) db.users[id].faction = { name: null, shares: {} };

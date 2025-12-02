@@ -1,7 +1,7 @@
 {
   "users": {
     "724847846897221642": {
-      "points": 171,
+      "points": 236,
       "inventory": {
         "shield": 1
       },
@@ -13,8 +13,11 @@
         "claimed": false
       },
       "faction": {
-        "name": null,
-        "shares": {}
+        "name": "rouge",
+        "shares": {
+          "rouge": 5,
+          "jaune": 10
+        }
       },
       "maritime": {
         "active": false,
@@ -69,28 +72,30 @@
   },
   "factions": {
     "bleu": {
-      "value": 10,
+      "value": 19,
       "shares": 100
     },
     "rouge": {
-      "value": 10,
-      "shares": 100
+      "president": "724847846897221642",
+      "value": 14,
+      "shares": 110
     },
     "vert": {
-      "value": 10,
+      "value": 6,
       "shares": 100
     },
     "jaune": {
-      "value": 10,
+      "value": 6,
       "shares": 100
     },
     "violet": {
-      "value": 10,
+      "value": 5,
       "shares": 100
     }
   },
   "config": {
     "logChannelId": "",
+    "eventsChannelId": "1445056160007716990",
     "adventChannelId": "",
     "superAdminRoles": [],
     "dailyReward": 50,
