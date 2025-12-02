@@ -2,7 +2,7 @@ import { ButtonInteraction, Client, Collection, GatewayIntentBits, GuildMember }
 import dotenv from "dotenv";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { Command, Config } from "./types";
+import { Command } from "./types";
 
 declare module "discord.js" {
     export interface Client {
@@ -12,10 +12,6 @@ declare module "discord.js" {
 
 dotenv.config();
 process.env.WEIGHTS_UNOFFICIAL_ENDPOINT = process.env.API_URL;
-
-const config: Config = {
-    DISCORD_TOKEN: process.env.DISCORD_TOKEN || ""
-};
 
 // Initialize Discord Client
 
@@ -408,8 +404,18 @@ client.on('messageCreate', async (message: Message) => {
     }
 });
 
+export async function log(title: string, details: string,  extraFields = []) {
+    console.log(`[${title}] ${details}`);
+    const chan = await client.channels.fetch(db.config.logChannelId).catch(() => null);
+    if (!chan) return;
+    
+    const embed = new EmbedBuilder().setTitle(title).setDescription(details.substring(0, 4000)).setColor("#3498DB").setTimestamp();
+    if (extraFields.length > 0) embed.addFields(extraFields);
+    try { await (chan as TextChannel).send({ embeds: [embed] }); } catch (e) {}
+}
+
 // Log in to Discord with your client's token
-client.login(config.DISCORD_TOKEN);
+client.login(db.config.bot_token);
 
 // Error handling
 process.on("uncaughtException", (error: Error) => {

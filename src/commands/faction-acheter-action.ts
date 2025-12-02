@@ -1,5 +1,6 @@
 import { ChatInputCommandInteraction, Client, EmbedBuilder, SlashCommandBuilder, User } from "discord.js";
 import fs from "fs";
+import { log } from '../index';
 import { Faction } from "../types";
 
 function loadDatabase() {
@@ -47,75 +48,120 @@ export default {
         )
     ,
     async execute(interaction: ChatInputCommandInteraction) {
-        const buyerId = interaction.user.id;
-        const nombre = interaction.options.getInteger("nombre") as number;
+        try {
+            const buyerId = interaction.user.id;
+            const nombre = interaction.options.getInteger("nombre") as number;
 
-        const database = loadDatabase(); // Dynamically load the database
-        const factions = database.factions as Record<string, Faction>; // Dynamically load factions
+            const database = loadDatabase(); // Dynamically load the database
+            const factions = database.factions as Record<string, Faction>; // Dynamically load factions
 
-        const factionName = interaction.options.getString("faction") as string;
-        const faction = factions[factionName];
+            const factionName = interaction.options.getString("faction") as string;
+            const faction = factions[factionName];
 
-        // Ensure the specified faction exists
-        if (!faction) {
-            const embed = new EmbedBuilder()
-                .setColor("Red")
-                .setTitle("Faction Invalide")
-                .setDescription(`La faction **${factionName}** n'existe pas.`);
+            // Ensure the specified faction exists
+            if (!faction) {
+                const embed = new EmbedBuilder()
+                    .setColor("Red")
+                    .setTitle("Faction Invalide")
+                    .setDescription(`La faction **${factionName}** n'existe pas.`);
 
-            return interaction.reply({ embeds: [embed], ephemeral: true });
-        }
-
-        // Ensure the seller is valid or default to the faction president
-        const seller = interaction.options.getUser("joueur");
-
-        let availiableShares = faction.shares;
-        // iteration over users to find how many shares they have so we deduce availiables shares from the server
-        for (const userId in database.users) {
-            const user = database.users[userId];
-            if (user.faction && user.faction.shares && user.faction.shares[factionName]) {
-                availiableShares -= user.faction.shares[factionName];
+                log('Faction-Acheter-Action Command', `${interaction.user.tag} tried to buy shares in a non-existent faction: ${factionName}.`);
+                return interaction.reply({ embeds: [embed], ephemeral: true });
             }
-        }
 
-        // Check if the faction has enough actions available
-        if (availiableShares < nombre) {
-            const embed = new EmbedBuilder()
-                .setColor("Red")
-                .setTitle("Actions Insuffisantes")
-                .setDescription(
-                    `La faction **${factionName}** n'a plus assez d'actions disponibles à la vente. ` +
-                    `Actions restantes : **${availiableShares}**.`
-                );
+            // Ensure the seller is valid or default to the faction president
+            const seller = interaction.options.getUser("joueur");
 
-            return interaction.reply({ embeds: [embed], ephemeral: true });
-        }
+            let availiableShares = faction.shares;
+            // iteration over users to find how many shares they have so we deduce availiables shares from the server
+            for (const userId in database.users) {
+                const user = database.users[userId];
+                if (user.faction && user.faction.shares && user.faction.shares[factionName]) {
+                    availiableShares -= user.faction.shares[factionName];
+                }
+            }
 
-        // If no seller, actions are bought from the server directly
-        if (!seller) {
+            // Check if the faction has enough actions available
             if (availiableShares < nombre) {
                 const embed = new EmbedBuilder()
                     .setColor("Red")
                     .setTitle("Actions Insuffisantes")
                     .setDescription(
-                        `Le serveur n'a plus assez d'actions disponibles à la vente pour la faction **${factionName}**. ` +
+                        `La faction **${factionName}** n'a plus assez d'actions disponibles à la vente. ` +
                         `Actions restantes : **${availiableShares}**.`
                     );
 
+                log('Faction-Acheter-Action Command', `${interaction.user.tag} tried to buy ${nombre} shares in ${factionName}, but only ${availiableShares} were available.`);
                 return interaction.reply({ embeds: [embed], ephemeral: true });
             }
 
-            // Deduct shares from the server
-            faction.shares -= nombre;
+            // If no seller, actions are bought from the server directly
+            if (!seller) {
+                if (availiableShares < nombre) {
+                    const embed = new EmbedBuilder()
+                        .setColor("Red")
+                        .setTitle("Actions Insuffisantes")
+                        .setDescription(
+                            `Le serveur n'a plus assez d'actions disponibles à la vente pour la faction **${factionName}**. ` +
+                            `Actions restantes : **${availiableShares}**.`
+                        );
+
+                    log('Faction-Acheter-Action Command', `${interaction.user.tag} tried to buy ${nombre} shares from the server for ${factionName}, but only ${availiableShares} were available.`);
+                    return interaction.reply({ embeds: [embed], ephemeral: true });
+                }
+
+                // Deduct shares from the server
+                faction.shares -= nombre;
+
+                const embed = new EmbedBuilder()
+                    .setColor("Green")
+                    .setTitle("Achat Réussi")
+                    .setDescription(
+                        `Vous avez acheté **${nombre} actions** directement du serveur pour la faction **${factionName}**.`
+                    );
+
+                const db = loadDatabase();
+                const buyerData = db.users[buyerId];
+                if (!buyerData.faction.shares[factionName]) {
+                    buyerData.faction.shares[factionName] = 0;
+                }
+                buyerData.faction.shares[factionName] += nombre;
+                buyerData.points -= nombre * faction.value;
+
+                fs.writeFileSync("./databases/database.json", JSON.stringify(db, null, 2));
+
+                log('Faction-Acheter-Action Command', `${interaction.user.tag} bought ${nombre} shares directly from the server for ${factionName}.`);
+                return interaction.reply({ embeds: [embed], ephemeral: true });
+            }
+
+            // Check if the specified seller has enough shares
+            const sellerId = (seller as User)?.id;
+            const sellerUser = await getDiscordUser(interaction.client, sellerId)
+            const sellerData = database.users[sellerId];
+            if (!sellerData || !sellerData.faction || !sellerData.faction.shares || !sellerData.faction.shares[factionName] || sellerData.faction.shares[factionName] < nombre) {
+                const embed = new EmbedBuilder()
+                    .setColor("Red")
+                    .setTitle("Actions Insuffisantes")
+                    .setDescription(
+                        `Le joueur **${sellerUser?.username}** n'a pas assez d'actions disponibles à la vente pour la faction **${factionName}**.`
+                    );
+
+                log('Faction-Acheter-Action Command', `${interaction.user.tag} tried to buy ${nombre} shares from ${sellerUser?.username} in ${factionName}, but they had insufficient shares.`);
+                return interaction.reply({ embeds: [embed], ephemeral: true });
+            }
+
+            // Deduct shares from the seller
+            sellerData.faction.shares[factionName] -= nombre;
 
             const embed = new EmbedBuilder()
                 .setColor("Green")
                 .setTitle("Achat Réussi")
                 .setDescription(
-                    `Vous avez acheté **${nombre} actions** directement du serveur pour la faction **${factionName}**.`
+                    `Vous avez acheté **${nombre} actions** de **${sellerUser?.username}** dans la faction **${factionName}**.`
                 );
 
             const db = loadDatabase();
+
             const buyerData = db.users[buyerId];
             if (!buyerData.faction.shares[factionName]) {
                 buyerData.faction.shares[factionName] = 0;
@@ -123,51 +169,20 @@ export default {
             buyerData.faction.shares[factionName] += nombre;
             buyerData.points -= nombre * faction.value;
 
+            const sellerDataDb = db.users[sellerId];
+            sellerDataDb.faction.shares[factionName] -= nombre;
+            sellerDataDb.points += nombre * faction.value;
+
             fs.writeFileSync("./databases/database.json", JSON.stringify(db, null, 2));
 
+            log('Faction-Acheter-Action Command', `${interaction.user.tag} bought ${nombre} shares from ${sellerUser?.username} in ${factionName}.`);
             return interaction.reply({ embeds: [embed], ephemeral: true });
+        } catch (e) {
+            console.error('Faction-Acheter-Action Command Error:', e);
+            log('Faction-Acheter-Action Command Error', `Error occurred: ${String(e)}`);
+            if (!interaction.replied) {
+                await interaction.reply({ content: 'Une erreur est survenue.', ephemeral: true });
+            }
         }
-
-        // Check if the specified seller has enough shares
-        const sellerId = (seller as User)?.id;
-        const sellerUser = await getDiscordUser(interaction.client, sellerId)
-        const sellerData = database.users[sellerId];
-        if (!sellerData || !sellerData.faction || !sellerData.faction.shares || !sellerData.faction.shares[factionName] || sellerData.faction.shares[factionName] < nombre) {
-            const embed = new EmbedBuilder()
-                .setColor("Red")
-                .setTitle("Actions Insuffisantes")
-                .setDescription(
-                    `Le joueur **${sellerUser?.username}** n'a pas assez d'actions disponibles à la vente pour la faction **${factionName}**.`
-                );
-
-            return interaction.reply({ embeds: [embed], ephemeral: true });
-        }
-
-        // Deduct shares from the seller
-        sellerData.faction.shares[factionName] -= nombre;
-
-        const embed = new EmbedBuilder()
-            .setColor("Green")
-            .setTitle("Achat Réussi")
-            .setDescription(
-                `Vous avez acheté **${nombre} actions** de **${sellerUser?.username}** dans la faction **${factionName}**.`
-            );
-
-
-        const db = loadDatabase();
-
-        const buyerData = db.users[buyerId];
-        if (!buyerData.faction.shares[factionName]) {
-            buyerData.faction.shares[factionName] = 0;
-        }
-        buyerData.faction.shares[factionName] += nombre;
-        buyerData.points -= nombre * faction.value;
-
-        const sellerDataDb = db.users[sellerId];
-        sellerDataDb.faction.shares[factionName] -= nombre;
-        sellerDataDb.points += nombre * faction.value;
-
-        fs.writeFileSync("./databases/database.json", JSON.stringify(db, null, 2));
-        return interaction.reply({ embeds: [embed], ephemeral: true });
     },
 };

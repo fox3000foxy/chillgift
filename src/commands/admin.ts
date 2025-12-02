@@ -1,4 +1,5 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, TextChannel } from 'discord.js';
+import { log } from '../index';
 import { db, getUser, saveDatabase, updatePoints } from '../legacy/db';
 
 const command = {
@@ -38,6 +39,7 @@ const command = {
       const isAdmin = adminRoles.some((role: string) => memberRoles.includes(role));
       if (!isAdmin) {
         await interaction.reply({ content: '❌ Vous n’avez pas les permissions nécessaires pour utiliser cette commande.', ephemeral: true });
+        log('Admin Command', `${interaction.user.tag} attempted to use admin commands without permission.`);
         return;
       }
 
@@ -46,17 +48,20 @@ const command = {
         const user = interaction.options.getUser('user', true);
         const pts = interaction.options.getInteger('points', true);
         updatePoints(user.id, pts);
+        log('Admin Command', `${interaction.user.tag} added ${pts} points to ${user.tag}.`);
         return interaction.reply({ content: `✅ Ajouté ${pts} points à ${user}.`, ephemeral: true });
       }
       if (sub === 'remove') {
         const user = interaction.options.getUser('user', true);
         const pts = interaction.options.getInteger('points', true);
         updatePoints(user.id, -pts);
+        log('Admin Command', `${interaction.user.tag} removed ${pts} points from ${user.tag}.`);
         return interaction.reply({ content: `✅ Retiré ${pts} points à ${user}.`, ephemeral: true });
       }
       if (sub === 'drop') {
         const montant = interaction.options.getInteger('montant', true);
         await (interaction.channel as TextChannel)?.send({ content: `💰 DROP ${montant}` });
+        log('Admin Command', `${interaction.user.tag} created a drop of ${montant} points.`);
         return interaction.reply({ content: '✅ Drop posté.', ephemeral: true });
       }
       if (sub === 'post-advent') {
@@ -83,6 +88,7 @@ const command = {
         };
 
         await (channel as TextChannel).send({ embeds: [embed], components: [button] });
+        log('Admin Command', `${interaction.user.tag} posted the advent calendar in ${channel}.`);
         return interaction.reply({ content: '✅ Calendrier posté.', ephemeral: true });
       }
       if (sub === 'view_conf') {
@@ -126,6 +132,7 @@ const command = {
       }
     } catch (e) {
       console.error('admin command error', e);
+      log('Admin Command Error', `Error occurred: ${String(e)}`);
       if (!interaction.replied) {
         await interaction.reply({ content: '❌ Une erreur est survenue.', ephemeral: true });
       }

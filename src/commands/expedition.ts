@@ -1,5 +1,6 @@
 import { ChatInputCommandInteraction, Client, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import fs from 'fs';
+import { log } from '../index';
 import { getUser, updatePoints } from '../legacy/db';
 
 function generateRewards(type: 'calm' | 'storm' | 'abyss'): { name: string; value: number }[] {
@@ -143,10 +144,12 @@ const command = {
             const time = durations[mode];
 
             if (user.points < cost) {
+                log('Expedition Command', `${interaction.user.tag} tried to start an expedition (${mode}) but had insufficient points.`);
                 return interaction.reply({ content: 'Vous n\'avez pas assez de points pour cette expédition.', ephemeral: true });
             }
 
             if (user.maritime?.active) {
+                log('Expedition Command', `${interaction.user.tag} tried to start an expedition (${mode}) but already has an active expedition.`);
                 return interaction.reply({ content: 'Une expédition est déjà en cours.', ephemeral: true });
             }
 
@@ -162,9 +165,8 @@ const command = {
             const db = loadDatabase();
             db.users[uid] = user;
 
-            console.log(`Utilisateur ${uid} a lancé une expédition vers ${mode}.`, user.maritime);
-
             saveDatabase(db);
+            log('Expedition Command', `${interaction.user.tag} started an expedition (${mode}) costing ${cost} points.`);
 
             const embed = new EmbedBuilder()
                 .setColor("Blue")
@@ -179,6 +181,7 @@ const command = {
             await interaction.reply({ embeds: [embed], ephemeral: true });
         } catch (e) {
             console.error('Erreur lors de l\'expédition :', e);
+            log('Expedition Command Error', `Error occurred: ${String(e)}`);
             if (!interaction.replied) {
                 await interaction.reply({ content: 'Une erreur est survenue.', ephemeral: true });
             }

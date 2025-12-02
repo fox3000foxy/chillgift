@@ -1,4 +1,5 @@
 import { CommandInteraction, SlashCommandBuilder } from "discord.js";
+import { log } from '../index';
 
 const command = {
     data: new SlashCommandBuilder()
@@ -13,8 +14,10 @@ const command = {
                 content: `Pong! WS: ${ws}ms | REST: ${rest}ms`,
                 ephemeral: true,
             });
+            log('Ping Command', `${interaction.user.tag} executed the ping command. WS: ${ws}ms, REST: ${rest}ms.`);
         } catch (error) {
             console.error("Ping command error:", error);
+            log('Ping Command Error', `Error occurred: ${String(error)}`);
             if (interaction.replied || interaction.deferred) {
                 await interaction.editReply({ content: "Error: failed to run ping." });
             } else {

@@ -1,4 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { log } from '../index';
 import { getUser, updatePoints } from '../legacy/db';
 
 function drawCard() {
@@ -41,10 +42,12 @@ const command = {
 
       if (user.points < bet) {
         await interaction.reply({ content: 'Pas assez de points pour miser.', ephemeral: true });
+        log('Blackjack Command', `${interaction.user.tag} tried to bet ${bet} points but had insufficient funds.`);
         return;
       }
 
       updatePoints(interaction.user.id, -bet);
+      log('Blackjack Command', `${interaction.user.tag} placed a bet of ${bet} points.`);
 
       const playerHand = [drawCard(), drawCard()];
       const dealerHand = [drawCard(), drawCard()];
@@ -77,6 +80,7 @@ const command = {
       collector.on('collect', async i => {
         if (i.user.id !== interaction.user.id) {
           await i.reply({ content: 'Ce jeu ne vous appartient pas.', ephemeral: true });
+          log('Blackjack Collector', `${i.user.tag} attempted to interact with ${interaction.user.tag}'s game.`);
           return;
         }
 
@@ -88,8 +92,11 @@ const command = {
             playerHand.push(newCard);
             const playerValue = calculateHandValue(playerHand);
 
+            log('Blackjack Collector', `${interaction.user.tag} drew a card: ${newCard}. Current hand: ${playerHand.join(', ')}.`);
+
             if (playerValue > 21) {
               collector.stop();
+              log('Blackjack Collector', `${interaction.user.tag} busted with a hand value of ${playerValue}.`);
               await interaction.editReply({
                 embeds: [
                   embed
@@ -117,8 +124,10 @@ const command = {
 
             let dealerValue = calculateHandValue(dealerHand);
             while (dealerValue < 17) {
-              dealerHand.push(drawCard());
+              const newCard = drawCard();
+              dealerHand.push(newCard);
               dealerValue = calculateHandValue(dealerHand);
+              log('Blackjack Collector', `Dealer drew a card: ${newCard}. Dealer's hand: ${dealerHand.join(', ')}.`);
             }
 
             const playerValue = calculateHandValue(playerHand);
@@ -127,11 +136,14 @@ const command = {
             if (dealerValue > 21 || playerValue > dealerValue) {
               result = '🎉 Vous gagnez !';
               updatePoints(interaction.user.id, bet * 2);
+              log('Blackjack Collector', `${interaction.user.tag} won with a hand value of ${playerValue} against the dealer's ${dealerValue}.`);
             } else if (playerValue === dealerValue) {
               result = '🤝 Égalité !';
               updatePoints(interaction.user.id, bet);
+              log('Blackjack Collector', `${interaction.user.tag} tied with the dealer. Both had a hand value of ${playerValue}.`);
             } else {
               result = '😢 Vous perdez.';
+              log('Blackjack Collector', `${interaction.user.tag} lost with a hand value of ${playerValue} against the dealer's ${dealerValue}.`);
             }
 
             await interaction.editReply({
@@ -154,10 +166,12 @@ const command = {
       collector.on('end', async collected => {
         if (collected.size === 0) {
           await interaction.editReply({ content: '⏰ Temps écoulé !', components: [] });
+          log('Blackjack Collector', `Game for ${interaction.user.tag} ended due to timeout.`);
         }
       });
     } catch (e) {
       console.error('Erreur dans la commande blackjack :', e);
+      log('Blackjack Command Error', `Error occurred: ${String(e)}`);
       if (!interaction.replied) {
         await interaction.reply({ content: 'Une erreur est survenue.', ephemeral: true });
       }

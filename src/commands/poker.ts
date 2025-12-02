@@ -1,4 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, ComponentType, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { log } from '../index';
 import { getUser, updatePoints } from '../legacy/db';
 import { PokerBot, PokerEngine } from '../lib/PokerManager';
 
@@ -28,11 +29,13 @@ const command = {
             const user = getUser(userId);
 
             if (user.points < mise) {
+                log('Poker Command', `${interaction.user.tag} tried to join a poker game with a bet of ${mise} but had insufficient points.`);
                 return interaction.reply({ content: 'Vous n\'avez pas assez de points pour cette mise.', ephemeral: true });
             }
 
             // Déduire la mise initiale
             updatePoints(userId, -mise);
+            log('Poker Command', `${interaction.user.tag} joined a poker game with a bet of ${mise} points.`);
 
             // Créer une instance de PokerEngine
             let engine = new PokerEngine(interaction.user.username, mise, 20);
@@ -117,10 +120,13 @@ const command = {
                 fetchReply: true
             });
 
+            log('Poker Command', `${interaction.user.tag} started a poker game.`);
+
             // Gérer les interactions des boutons
             const collector = message.createMessageComponentCollector({ componentType: ComponentType.Button });
 
             collector.on('collect', async i => {
+                log('Poker Collector', `${i.user.tag} interacted with the poker game using button ${i.customId}.`);
                 if (i.user.id !== userId) {
                     return i.reply({ content: 'Ce n\'est pas votre tour.', ephemeral: true });
                 }
@@ -143,6 +149,7 @@ const command = {
 
             // Écouter les événements du jeu
             engine.on('playerTurn', async () => {
+                // log('Poker Engine', `It is now ${engine.}'s turn.`);
                 buttons.components.forEach(button => button.setDisabled(false));
                 await message.edit({
                     embeds: [updateEmbed(`${interaction.user.username}, c'est votre tour !`, interaction.user.username)],
@@ -151,6 +158,7 @@ const command = {
             });
 
             engine.on('action', async (msg, botName, botAction) => {
+                // log('Poker Engine', `${botName} performed action: ${botAction}.`);
                 const bot = bots.find(b => b.name === botName);
                 if (bot) {
                     if (botAction === 'fold') {
@@ -169,6 +177,7 @@ const command = {
 
             // Ajouter un gestionnaire pour les boutons "Relancer" et "Récupérer les gains"
             engine.on('showdown', async (msg) => {
+                // log('Poker Engine', `Showdown occurred. ${msg}`);
                 const actionButtons = new ActionRowBuilder<ButtonBuilder>()
                     .addComponents(
                         new ButtonBuilder()
@@ -234,10 +243,12 @@ const command = {
             await engine.playSession();
             // Mise à jour des points après la partie
             updatePoints(userId, engine.playerStack - mise);
+            log('Poker Command', `${interaction.user.tag} finished the poker game. Final stack: ${engine.playerStack}.`);
         } catch (error) {
             console.error('Erreur lors de l\'exécution de la commande poker:', error);
+            log('Poker Command Error', `Error occurred: ${String(error)}`);
             if (!interaction.replied) {
-                await interaction.reply({ content: 'Une erreur est survenue pendant la partie.', ephemeral: true });
+                await interaction.reply({ content: 'Erreur.', ephemeral: true });
             }
         }
     }

@@ -1,4 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, ComponentType, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { log } from '../index';
 import { getUser, saveDatabase, updatePoints } from '../legacy/db';
 
 const command = {
@@ -30,11 +31,13 @@ const command = {
         collector.on('collect', async (btnInteraction) => {
           if (btnInteraction.user.id !== interaction.user.id) {
             await btnInteraction.reply({ content: 'Ce bouton ne vous appartient pas.', ephemeral: true });
+            log('Braquage Collector', `${btnInteraction.user.tag} attempted to interact with ${interaction.user.tag}'s robbery.`);
             return;
           }
 
           if (btnInteraction.customId === 'cancel_braquage') {
             await btnInteraction.update({ content: 'Braquage annulé.', components: [] });
+            log('Braquage Collector', `${interaction.user.tag} canceled the robbery attempt on ${target.tag}.`);
             collector.stop();
             return;
           }
@@ -51,6 +54,7 @@ const command = {
                 .setDescription(`${target.username} n'a pas assez de points à voler.`)
                 .setColor('#E74C3C');
               await btnInteraction.update({ embeds: [failEmbed], components: [] });
+              log('Braquage Collector', `${interaction.user.tag} failed to rob ${target.tag} due to insufficient points.`);
               return;
             }
 
@@ -69,6 +73,7 @@ const command = {
 🎯 ${target.username} récupère **${penalty} points**.`)
                 .setColor('#E74C3C');
               await btnInteraction.update({ embeds: [failEmbed], components: [] });
+              log('Braquage Collector', `${interaction.user.tag} failed to rob ${target.tag} and lost ${penalty} points.`);
               return;
             }
 
@@ -84,12 +89,14 @@ const command = {
 🎉 Félicitations pour votre audace !`)
               .setColor('#2ECC71');
             await btnInteraction.update({ embeds: [successEmbed], components: [] });
+            log('Braquage Collector', `${interaction.user.tag} successfully robbed ${amount} points from ${target.tag}.`);
           }
         });
 
         collector.on('end', async () => {
           if (message.editable) {
             await message.edit({ components: [] });
+            log('Braquage Collector', `Robbery attempt by ${interaction.user.tag} ended.`);
           }
         });
 
@@ -106,6 +113,7 @@ const command = {
           .setDescription(`${target.username} n'a pas assez de points à voler.`)
           .setColor('#E74C3C');
         await interaction.reply({ embeds: [embed], ephemeral: true });
+        log('Braquage Command', `${interaction.user.tag} failed to rob ${target.tag} due to insufficient points.`);
         return;
       }
 
@@ -124,6 +132,7 @@ const command = {
 🎯 ${target.username} récupère **${penalty} points**.`)
           .setColor('#E74C3C');
         await interaction.reply({ embeds: [embed] });
+        log('Braquage Command', `${interaction.user.tag} failed to rob ${target.tag} and lost ${penalty} points.`);
         return;
       }
 
@@ -139,8 +148,10 @@ const command = {
 🎉 Félicitations pour votre audace !`)
         .setColor('#2ECC71');
       await interaction.reply({ embeds: [embed] });
+      log('Braquage Command', `${interaction.user.tag} successfully robbed ${amount} points from ${target.tag}.`);
     } catch (e) {
       console.error('Erreur lors du braquage :', e);
+      log('Braquage Command Error', `Error occurred: ${String(e)}`);
       if (!interaction.replied) {
         await interaction.reply({ content: 'Une erreur est survenue.', ephemeral: true });
       }

@@ -1,4 +1,5 @@
 import { CommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { log } from '../index';
 import { db } from '../legacy/db';
 
 const command = {
@@ -26,8 +27,10 @@ const command = {
                 .setFooter({ text: 'Continuez à jouer pour grimper dans le classement !' });
 
             await interaction.reply({ embeds: [embed] });
+            log('Classement Command', `${interaction.user.tag} viewed the leaderboard.`);
         } catch (e) {
             console.error('classement error', e);
+            log('Classement Command Error', `Error occurred: ${String(e)}`);
             if (!interaction.replied) {
                 await interaction.reply({ content: 'Une erreur est survenue lors de la récupération du classement.', ephemeral: true });
             }

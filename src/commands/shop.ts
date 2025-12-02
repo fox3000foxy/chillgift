@@ -1,4 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, ComponentType, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { log } from '../index';
 import { getUser, saveDatabase, updatePoints } from '../legacy/db';
 
 const command = {
@@ -36,10 +37,13 @@ const command = {
 
       const message = await interaction.reply({ embeds: [embed], components: [row], ephemeral: true, fetchReply: true });
 
+      log('Shop Command', `${interaction.user.tag} opened the shop.`);
+
       const collector = message.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
 
       collector.on('collect', async (btnInteraction) => {
         if (btnInteraction.user.id !== interaction.user.id) {
+          log('Shop Collector', `${btnInteraction.user.tag} tried to interact with the shop buttons of ${interaction.user.tag}.`);
           return btnInteraction.reply({ content: 'Vous ne pouvez pas utiliser ce bouton.', ephemeral: true });
         }
 
@@ -48,12 +52,14 @@ const command = {
         const item = btnInteraction.customId.split('_')[2];
 
         if (user.points < costs[item]) {
+          log('Shop Collector', `${interaction.user.tag} tried to buy ${item} but had insufficient points.`);
           return btnInteraction.reply({ content: 'Pas assez de points.', ephemeral: true });
         }
 
         updatePoints(interaction.user.id, -costs[item]);
         user.inventory[item] = (user.inventory[item] || 0) + 1;
         saveDatabase();
+        log('Shop Collector', `${interaction.user.tag} bought ${item} for ${costs[item]} points.`);
 
         await btnInteraction.update({ content: `✅ Vous avez acheté ${item}.`, components: [] });
         collector.stop();
@@ -62,10 +68,12 @@ const command = {
       collector.on('end', async () => {
         if (message.editable) {
           await message.edit({ components: [] });
+          log('Shop Collector', `Shop session for ${interaction.user.tag} ended.`);
         }
       });
     } catch (e) {
       console.error('Erreur dans la commande shop :', e);
+      log('Shop Command Error', `Error occurred: ${String(e)}`);
       if (!interaction.replied) {
         await interaction.reply({ content: 'Une erreur est survenue.', ephemeral: true });
       }

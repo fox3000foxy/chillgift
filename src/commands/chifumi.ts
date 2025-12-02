@@ -1,4 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, ComponentType, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { log } from '..';
 import { getUser, saveDatabase, updatePoints } from '../legacy/db';
 
 const command = {
@@ -20,6 +21,7 @@ const command = {
                     .setDescription(`Les deux joueurs doivent avoir au moins **${bet} points** pour jouer.`)
                     .setColor('#E74C3C');
                 await interaction.reply({ embeds: [embed], ephemeral: true });
+                log('Chifumi Command', `${interaction.user.tag} or ${adv.tag} had insufficient points to start the game.`);
                 return;
             }
 
@@ -48,17 +50,20 @@ Cliquez sur un bouton pour jouer.`)
             collector.on('collect', async (btnInteraction) => {
                 if (![interaction.user.id, adv.id].includes(btnInteraction.user.id)) {
                     await btnInteraction.reply({ content: 'Ce duel ne vous concerne pas.', ephemeral: true });
+                    log('Chifumi Collector', `${btnInteraction.user.tag} attempted to interact with the game between ${interaction.user.tag} and ${adv.tag}.`);
                     return;
                 }
 
                 if (choices.has(btnInteraction.user.id)) {
                     await btnInteraction.reply({ content: 'Vous avez déjà fait votre choix.', ephemeral: true });
+                    log('Chifumi Collector', `${btnInteraction.user.tag} tried to make multiple choices.`);
                     return;
                 }
 
                 const chosen = btnInteraction.customId.split('_')[1] as Choice;
                 choices.set(btnInteraction.user.id, chosen);
                 await btnInteraction.reply({ content: `Choix enregistré : **${chosen}**`, ephemeral: true });
+                log('Chifumi Collector', `${btnInteraction.user.tag} chose ${chosen}.`);
 
                 if (choices.size === 2) {
                     collector.stop();
@@ -68,9 +73,10 @@ Cliquez sur un bouton pour jouer.`)
             collector.on('end', async () => {
                 if (choices.size < 2) {
                     await interaction.editReply({ content: 'Le duel a expiré faute de réponses.', components: [] });
+                    log('Chifumi Collector', `Game between ${interaction.user.tag} and ${adv.tag} expired due to inactivity.`);
                     return;
                 }
-                type Choice = 'rock' | 'paper' | 'scissors';
+
                 const challengerChoice = choices.get(interaction.user.id) as Choice;
                 const opponentChoice = choices.get(adv.id) as Choice;
 
@@ -92,6 +98,7 @@ Cliquez sur un bouton pour jouer.`)
 
 **${interaction.user.username}** gagne **${bet} points** !`)
                         .setColor('#2ECC71');
+                    log('Chifumi Collector', `${interaction.user.tag} won against ${adv.tag} and gained ${bet} points.`);
                 } else if (result === 'lose') {
                     updatePoints(interaction.user.id, -bet);
                     updatePoints(adv.id, bet);
@@ -101,6 +108,7 @@ Cliquez sur un bouton pour jouer.`)
 
 **${adv.username}** gagne **${bet} points** !`)
                         .setColor('#E74C3C');
+                    log('Chifumi Collector', `${interaction.user.tag} lost to ${adv.tag} and lost ${bet} points.`);
                 } else {
                     resultEmbed = new EmbedBuilder()
                         .setTitle('🤝 Match nul !')
@@ -108,6 +116,7 @@ Cliquez sur un bouton pour jouer.`)
 
 Aucun point n'est échangé.`)
                         .setColor('#F1C40F');
+                    log('Chifumi Collector', `Game between ${interaction.user.tag} and ${adv.tag} ended in a draw.`);
                 }
 
                 saveDatabase();
@@ -115,6 +124,7 @@ Aucun point n'est échangé.`)
             });
         } catch (e) {
             console.error('chifumi error', e);
+            log('Chifumi Command Error', `Error occurred: ${String(e)}`);
             if (!interaction.replied) {
                 await interaction.reply({ content: 'Erreur.', ephemeral: true });
             }

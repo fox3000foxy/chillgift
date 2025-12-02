@@ -1,7 +1,7 @@
 {
   "users": {
     "724847846897221642": {
-      "points": 342,
+      "points": 292,
       "inventory": {
         "shield": 1
       },
@@ -75,11 +75,11 @@
     },
     "rouge": {
       "president": "724847846897221642",
-      "value": 5,
+      "value": 8,
       "shares": 110
     },
     "vert": {
-      "value": 20,
+      "value": 5,
       "shares": 100
     },
     "jaune": {
@@ -92,9 +92,10 @@
     }
   },
   "config": {
-    "logChannelId": "",
+    "logChannelId": "1445379725349486706",
     "eventsChannelId": "1445056160007716990",
     "adventChannelId": "",
+    "bot_token": "MTM0MzUwMDA4MDg4MzQzNzY0MA.GZcdmO.e6EWt9_Fe5_knKxXqnaTx5MhrxGOCSFndzn96o",
     "superAdminRoles": [],
     "dailyReward": 50,
     "inviteReward": 70,

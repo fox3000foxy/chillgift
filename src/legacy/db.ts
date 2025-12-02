@@ -7,6 +7,7 @@ export const DEFAULT_CONFIG = {
     logChannelId: process.env.LOG_CHANNEL_ID || '',
     eventsChannelId: process.env.EVENTS_CHANNEL_ID || '',
     adventChannelId: process.env.ADVENT_CHANNEL_ID || '',
+    bot_token: process.env.DISCORD_TOKEN || "",
     superAdminRoles: [],
     dailyReward: 50,
     inviteReward: 70,
