@@ -1,18 +1,20 @@
-import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
+import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { getUser, updatePoints } from '../legacy/db';
 
 const command = {
   data: new SlashCommandBuilder()
     .setName('roulette')
     .setDescription('Roulette V2')
-    .addStringOption(o=>o.setName('option').setRequired(true).setDescription('Mise').addChoices(
+    .addStringOption(o => o.setName('option').setRequired(true).setDescription('Mise').addChoices(
       { name: 'Rouge', value: 'color:red' },
       { name: 'Noir', value: 'color:black' },
       { name: 'Pair', value: 'parity:even' },
       { name: 'Impair', value: 'parity:odd' },
+      { name: 'Passe (19-36)', value: 'range:high' },
+      { name: 'Manque (1-18)', value: 'range:low' },
       { name: 'Chiffre (num:5)', value: 'manual' }
     ))
-    .addIntegerOption(o=>o.setName('mise').setRequired(true).setDescription('Montant')),
+    .addIntegerOption(o => o.setName('mise').setRequired(true).setDescription('Montant')),
 
   async execute(interaction: ChatInputCommandInteraction) {
     try {
@@ -22,18 +24,34 @@ const command = {
       const u = getUser(uid);
       if (u.points < m) return interaction.reply({ content: 'Pas de fonds.', ephemeral: true });
       updatePoints(uid, -m);
-      const res = Math.floor(Math.random()*37);
-      const isRed = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(res);
+      const res = Math.floor(Math.random() * 37);
+      const isRed = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36].includes(res);
       let win = 0;
       if (opt.startsWith('num:')) {
-        const num = parseInt(opt.split(':')[1]); if (num === res) win = m*36;
+        const num = parseInt(opt.split(':')[1]);
+        if (num === res) win = m * 36;
       } else if (opt.startsWith('color:')) {
-        const val = opt.split(':')[1]; if ((val==='red'&&isRed)||(val==='black'&&!isRed&&res!==0)) win = m*2;
+        const val = opt.split(':')[1];
+        if ((val === 'red' && isRed) || (val === 'black' && !isRed && res !== 0)) win = m * 2;
       } else if (opt.startsWith('parity:')) {
-        const val = opt.split(':')[1]; if ((val==='even'&&res%2===0&&res!==0)||(val==='odd'&&res%2!==0)) win = m*2;
+        const val = opt.split(':')[1];
+        if ((val === 'even' && res % 2 === 0 && res !== 0) || (val === 'odd' && res % 2 !== 0)) win = m * 2;
+      } else if (opt.startsWith('range:')) {
+        const val = opt.split(':')[1];
+        if ((val === 'high' && res >= 19 && res <= 36) || (val === 'low' && res >= 1 && res <= 18)) win = m * 2;
       }
-      if (win>0) updatePoints(uid, win);
-      await interaction.reply({ content: `RÉSULTAT: ${res} ${isRed ? '🔴' : '⚫'} — ${win>0 ? `GAGNÉ +${win}` : 'PERDU'}` });
+      if (win > 0) updatePoints(uid, win);
+
+      const embed = new EmbedBuilder()
+        .setColor(win > 0 ? 'Green' : 'Red')
+        .setTitle('🎰 Résultat de la Roulette')
+        .setDescription(
+          `**Résultat** : ${res} ${isRed ? '🔴' : '⚫'}\n` +
+          `**Mise** : ${m} points\n` +
+          `**Gain** : ${win > 0 ? `+${win} points` : 'Aucun gain'}`
+        );
+
+      await interaction.reply({ embeds: [embed] });
     } catch (e) {
       console.error('roulette error', e);
       if (!interaction.replied) await interaction.reply({ content: 'Erreur.', ephemeral: true });
