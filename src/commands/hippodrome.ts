@@ -123,7 +123,7 @@ export default {
             if (horse) {
                 horse.position++;
                 await renderGame(interaction, horses, hiddenCards, revealedCards, drawnCard);
-                await setTimeout(500);
+                await setTimeout(200);
 
                 if (horse.position > hiddenCards.length) {
                     winner = horse.suit;
@@ -131,7 +131,7 @@ export default {
                 }
             } else {
                 await renderGame(interaction, horses, hiddenCards, revealedCards, drawnCard);
-                await setTimeout(500);
+                await setTimeout(200);
                 continue;
             }
 
@@ -152,11 +152,11 @@ export default {
 
                     // Mettre à jour l'affichage avec la carte retournée
                     await renderGame(interaction, horses, hiddenCards, revealedCards, drawnCard, revealedCard);
-                    await setTimeout(500);
+                    await setTimeout(200);
                 } else {
                     // Mettre à jour l'affichage avec la carte tirée uniquement
                     await renderGame(interaction, horses, hiddenCards, revealedCards, drawnCard);
-                    await setTimeout(500);
+                    await setTimeout(200);
                 }
             }
         }
