@@ -1,7 +1,7 @@
 {
   "users": {
     "724847846897221642": {
-      "points": 292,
+      "points": 657,
       "inventory": {
         "shield": 1
       },
@@ -24,7 +24,7 @@
       }
     },
     "1365989943012229221": {
-      "points": 727,
+      "points": 782,
       "inventory": {},
       "daily": {
         "date": "2025-12-02",
@@ -58,6 +58,24 @@
       "maritime": {
         "active": false
       }
+    },
+    "1118511310242595026": {
+      "points": 0,
+      "inventory": {},
+      "daily": {
+        "date": "2025-12-02",
+        "donjon": 0,
+        "traps": 0,
+        "works": 0,
+        "claimed": false
+      },
+      "faction": {
+        "name": null,
+        "shares": {}
+      },
+      "maritime": {
+        "active": false
+      }
     }
   },
   "advent": {
@@ -75,19 +93,19 @@
     },
     "rouge": {
       "president": "724847846897221642",
-      "value": 10,
+      "value": 6,
       "shares": 110
     },
     "vert": {
-      "value": 8,
+      "value": 11,
       "shares": 100
     },
     "jaune": {
-      "value": 5,
+      "value": 7,
       "shares": 100
     },
     "violet": {
-      "value": 18,
+      "value": 15,
       "shares": 100
     }
   },
@@ -154,7 +172,8 @@
         "1445071622498418831",
         "1445072304131543153",
         "1445077846388244480",
-        "1445173979965820947"
+        "1445173979965820947",
+        "1445385825822052414"
       ]
     }
   }

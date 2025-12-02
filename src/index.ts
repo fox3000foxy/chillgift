@@ -11,8 +11,6 @@ declare module "discord.js" {
 }
 
 dotenv.config();
-process.env.WEIGHTS_UNOFFICIAL_ENDPOINT = process.env.API_URL;
-
 // Initialize Discord Client
 
 const client = new Client({
@@ -274,18 +272,15 @@ client.on("interactionCreate", async interaction => {
     }
 });
 
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Message, TextChannel } from 'discord.js';
+import { EmbedBuilder, Message, TextChannel } from 'discord.js';
 import { startExpeditionDaemon } from "./commands/expedition";
 import { addClaimedMessage, db, getClaimedMessages, getUser, saveDatabase, updatePoints } from './legacy/db';
 import { startRandomEventDaemon } from "./lib/randomEvents";
 
 client.on('messageCreate', async (message: Message) => {
-    // console.log('messageCreate event triggered');
     if (message.author.bot) return;
-    // Ensure this message is from a guild (not a DM)
     if (!message.guild) return;
 
-    // Simple spam protection (like original)
     const cooldowns = (client as any).__legacyCooldowns ||= new Map<string, number>();
     const last = cooldowns.get(message.author.id) || 0;
     if (Date.now() - last < 2000) return;
@@ -302,14 +297,8 @@ client.on('messageCreate', async (message: Message) => {
 
     try {
         if (type === 'star') {
-            const embed = new EmbedBuilder()
-                .setTitle('🌠 ÉTOILE !')
-                .setDescription('Vite, réagissez avec 🌠 pour gagner des points !')
-                .setColor('#FFD700');
-
-            const m = await message.reply({ embeds: [embed] });
-            await m.react('🌠');
-            const collector = m.createReactionCollector({ filter: (r, u) => r.emoji.name === '🌠' && !u.bot, time: 15000, max: 1 });
+            await message.react('🌠');
+            const collector = message.createReactionCollector({ filter: (r, u) => r.emoji.name === '🌠' && !u.bot, time: 15000, max: 1 });
             collector.on('collect', async (r, u) => {
                 const user = getUser(u.id);
                 const rewardEmbed = new EmbedBuilder().setColor('#2ECC71');
@@ -320,7 +309,7 @@ client.on('messageCreate', async (message: Message) => {
                         .setDescription(`<@${u.id}> a trouvé une dague !`);
                     user.inventory.dagger--;
                     saveDatabase();
-                    log('Star Event', `${u.tag} used a dagger to avoid star damage.`);
+                    log('Star Event', `${u.tag} used a dagger to avoid star damage`);
                 } else {
                     if (Math.random() > 0.4) {
                         updatePoints(u.id, 50);
@@ -344,12 +333,6 @@ client.on('messageCreate', async (message: Message) => {
                                 .setDescription(`<@${u.id}> a utilisé un bouclier pour se protéger.`);
                             log('Star Event', `${u.tag} used a shield to protect themselves from star damage.`);
                         } else {
-                            // updatePoints(u.id, -50);
-                            // rewardEmbed
-                            //     .setTitle('🔥 Piège !')
-                            //     .setDescription(`<@${u.id}> perd **50 points** !`);
-
-                            // Timeout le user pendant 2 minutes (120000 ms)
                             const guild = message.guild;
                             if (!guild) return;
                             const member = await guild.members.fetch(u.id).catch(() => null);
@@ -390,15 +373,61 @@ client.on('messageCreate', async (message: Message) => {
                 log('Tree Event', `${u.tag} reacted to tree and earned 5 points.`);
             });
         } else if (type === 'snowball') {
-            const embed = new EmbedBuilder()
-                .setTitle('❄️ BATAILLE DE BOULES DE NEIGE !')
-                .setDescription('Appuyez sur le bouton pour participer !')
-                .setColor('#3498DB');
+            await message.react('❄️');
+            const collector = message.createReactionCollector({ filter: (r, u) => r.emoji.name === '❄️' && !u.bot, time: 15000, max: 1 });
+            collector.on('collect', async (r, u) => {
+                const user = getUser(u.id);
+                updatePoints(u.id, 5);
 
-            const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-                new ButtonBuilder().setCustomId('ev_snowball').setLabel('JETER').setStyle(ButtonStyle.Primary)
-            );
-            await (message.channel as TextChannel).send({ embeds: [embed], components: [row] });
+                const guild = message.guild;
+                if (!guild) return;
+                let members;
+                try {
+                    members = guild.members.cache.size > 0
+                        ? guild.members.cache
+                        : await guild.members.fetch();
+                } catch (err) {
+                    const errorAny = err as any;
+                    if (errorAny && typeof errorAny === 'object' && errorAny.name === 'GatewayRateLimitError') {
+                        const retryAfter = errorAny.data?.retry_after ?? 1;
+                        console.warn(`Rate limit hit: retrying after ${retryAfter} seconds.`);
+                        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+                        members = await guild.members.fetch();
+                    } else {
+                        console.error('Failed to fetch guild members:', err);
+                        return;
+                    }
+                }
+
+                let txt = '❄️ **HIT**\n';
+                let embed = new EmbedBuilder()
+                    .setTitle('❄️ Snowball Hit!')
+                    .setColor('#3498DB');
+
+                if (members && members.size > 0) {
+                    let random = members.random() as GuildMember;
+                    // Le membre random ne peut pas etre le cliqueur, on while jusqu'a en avoir un autre, il y a au moins 2 membres dans le serveur car le cliqueur est la
+                    while ((random.id === u.id || random.user.bot) && members.size > 1) {
+                        random = members.random() as GuildMember;
+                    }
+
+                    const victim = getUser(random.id);
+                    if (victim.inventory.amulet > 0) {
+                        victim.inventory.amulet--;
+                        txt += `🛡️ <@${random.id}> protégé par une amulette.`;
+                    } else if (victim.inventory.shield > 0) {
+                        victim.inventory.shield--;
+                        txt += `🛡️ <@${random.id}> protégé par un bouclier.`;
+                    } else {
+                        updatePoints(random.id, -3);
+                        txt += `🎯 <@${random.id}> perd **3 points**.`;
+                    }
+                    saveDatabase();
+                }
+
+                embed.setDescription(txt);
+                await (message.channel as TextChannel).send({ embeds: [embed] });
+            });
         } else if (type === 'quiz') {
             const a = Math.floor(Math.random() * 50), b = Math.floor(Math.random() * 50);
             const embed = new EmbedBuilder()

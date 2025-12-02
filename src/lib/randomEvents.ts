@@ -171,5 +171,5 @@ export function startRandomEventDaemon(client: Client) {
                 (eventsChannel as TextChannel).send({ embeds: [embed] });
             }
         }
-    }, 1 * 30 * 1000); // Trigger every hour
+    }, 3 * 60 * 1000); // Trigger every 3 minutes
 }
